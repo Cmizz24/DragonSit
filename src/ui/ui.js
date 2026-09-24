@@ -167,6 +167,7 @@ export function infoDialog(title, html, okLabel = 'OK') {
 // ---------- toasts ----------
 export function toast(message, type = 'info', ms = 2200) {
   const r = document.getElementById('toast-root');
+  if ([...r.children].some((c) => c.innerHTML === message)) return;
   const t = document.createElement('div');
   t.className = `toast ${type}`;
   t.innerHTML = message;

@@ -7,7 +7,9 @@ export const RARITY = {
   rare: { name: 'Rare', color: '#4fc3ff', hp: 155, atk: 27, def: 19, spd: 12, gold: 14, xp: 80, weight: 38, breed: 360, hatch: 270 },
   epic: { name: 'Epic', color: '#c56bff', hp: 200, atk: 36, def: 24, spd: 15, gold: 32, xp: 250, weight: 12, breed: 2700, hatch: 1800 },
   legendary: { name: 'Legendary', color: '#ffb02e', hp: 260, atk: 48, def: 30, spd: 18, gold: 70, xp: 800, weight: 2, breed: 7200, hatch: 5400 },
+  mythic: { name: 'Mythic', color: '#ff4fd8', hp: 340, atk: 64, def: 40, spd: 22, gold: 150, xp: 2500, weight: 1, breed: 14400, hatch: 10800 },
 };
+export const RARITY_ORDER = ['common', 'rare', 'epic', 'legendary', 'mythic'];
 
 // Per-element flavour applied to stats (fractions of base).
 export const ELEMENT_BIAS = {
@@ -86,6 +88,32 @@ const raw = [
   ['mirror', 'Mirror Dragon', ['legend', 'light'], 'legendary', null, 'Reflects every attack thrown at it with a smile.', { horn: 2, tail: 1, wing: 2 }],
   ['chaos', 'Chaos Dragon', ['legend', 'dark'], 'legendary', null, 'Where it walks, the rules bend.', { horn: 3, tail: 3, wing: 1 }],
   ['tempest', 'Tempest Dragon', ['legend', 'water', 'electric'], 'legendary', null, 'A hurricane with wings.', { horn: 1, tail: 3, wing: 2 }],
+
+  // --- More epics ---
+  ['magma', 'Magma Dragon', ['fire', 'earth', 'dark'], 'epic', { gems: 220 }, 'Sleeps inside volcanoes and dreams of eruptions.', { horn: 0, tail: 0, wing: 0 }],
+  ['sunflare', 'Sunflare Dragon', ['fire', 'light', 'nature'], 'epic', { gems: 220 }, 'Every flower turns to face it.', { horn: 2, tail: 1, wing: 1 }],
+  ['thunderbird', 'Thunderbird Dragon', ['electric', 'nature', 'light'], 'epic', { gems: 220 }, 'Its wingbeats bring the summer storms.', { horn: 1, tail: 1, wing: 1 }],
+  ['permafrost', 'Permafrost Dragon', ['ice', 'earth', 'water'], 'epic', { gems: 220 }, 'Older than the glaciers it naps on.', { horn: 2, tail: 2, wing: 2 }],
+  ['clockwork', 'Clockwork Dragon', ['metal', 'electric', 'light'], 'epic', { gems: 220 }, 'Ticks softly. Never late.', { horn: 0, tail: 2, wing: 2 }],
+  ['wraith', 'Wraith Dragon', ['dark', 'metal', 'ice'], 'epic', { gems: 220 }, 'You only see it when it wants you to.', { horn: 3, tail: 0, wing: 0 }],
+  ['monsoon', 'Monsoon Dragon', ['water', 'electric', 'nature'], 'epic', { gems: 220 }, 'Brings rain to every farm it passes.', { horn: 2, tail: 3, wing: 1 }],
+  ['juggernaut', 'Juggernaut Dragon', ['metal', 'earth', 'fire'], 'epic', { gems: 220 }, 'Unstoppable. Also unable to stop.', { horn: 0, tail: 2, wing: 0 }],
+  ['nebula', 'Nebula Dragon', ['dark', 'light', 'water'], 'epic', { gems: 220 }, 'Its scales hold tiny galaxies.', { horn: 3, tail: 1, wing: 2 }],
+  ['hailstorm', 'Hailstorm Dragon', ['ice', 'water', 'electric'], 'epic', { gems: 220 }, 'Rattles rooftops for fun.', { horn: 1, tail: 3, wing: 2 }],
+  ['druid', 'Druid Dragon', ['nature', 'dark', 'earth'], 'epic', { gems: 220 }, 'Whispers to roots and they whisper back.', { horn: 3, tail: 1, wing: 1 }],
+  ['solstice', 'Solstice Dragon', ['light', 'fire', 'ice'], 'epic', { gems: 220 }, 'Half summer, half winter, all attitude.', { horn: 2, tail: 0, wing: 2 }],
+
+  // --- More legendaries ---
+  ['origin', 'Origin Dragon', ['legend', 'nature', 'earth'], 'legendary', null, 'The island itself grew from its first footprint.', { horn: 3, tail: 1, wing: 1 }],
+  ['zenith', 'Zenith Dragon', ['legend', 'light', 'electric'], 'legendary', null, 'Flies higher than the sun dares.', { horn: 1, tail: 0, wing: 2 }],
+  ['leviathan', 'Leviathan Dragon', ['legend', 'water', 'ice'], 'legendary', null, 'The tide follows wherever it swims.', { horn: 2, tail: 3, wing: 2 }],
+  ['pyre', 'Pyre Dragon', ['legend', 'fire', 'dark'], 'legendary', null, 'Burns without ever running out.', { horn: 0, tail: 0, wing: 0 }],
+
+  // --- Mythic (four elements, bred from legendaries) ---
+  ['primordial', 'Primordial Dragon', ['fire', 'water', 'earth', 'nature'], 'mythic', null, 'The four old elements in one restless body.', { horn: 3, tail: 2, wing: 2 }],
+  ['cosmos', 'Cosmos Dragon', ['light', 'dark', 'electric', 'ice'], 'mythic', null, 'Stars orbit it like moths around a lamp.', { horn: 1, tail: 0, wing: 2 }],
+  ['apex', 'Apex Dragon', ['metal', 'electric', 'fire', 'dark'], 'mythic', null, 'The last word in any argument.', { horn: 0, tail: 3, wing: 0 }],
+  ['genesis', 'Genesis Dragon', ['legend', 'light', 'nature', 'water'], 'mythic', null, 'Where it rests, new islands rise.', { horn: 2, tail: 1, wing: 1 }],
 ];
 
 function timerFor(rarity, elements) {
@@ -108,7 +136,8 @@ function unlockFor(rarity, elements) {
   if (rarity === 'common') return maxU;
   if (rarity === 'rare') return Math.min(30, maxU + 1);
   if (rarity === 'epic') return 8;
-  return 10;
+  if (rarity === 'legendary') return 10;
+  return 18;
 }
 
 export const DRAGONS = {};

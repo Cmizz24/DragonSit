@@ -1,0 +1,23 @@
+// Tiered achievements. `value(state)` returns the current stat; each tier pays out once.
+export const ACHIEVEMENTS = [
+  { id: 'a_hatch', title: 'Egg Whisperer', desc: 'Hatch dragons', tiers: [5, 25, 100, 300], reward: [3, 8, 20, 60], value: (s) => s.stats.hatched },
+  { id: 'a_breed', title: 'Cupid', desc: 'Breed dragons', tiers: [3, 20, 75, 200], reward: [3, 8, 20, 60], value: (s) => s.stats.bred },
+  { id: 'a_feed', title: 'Head Chef', desc: 'Feed dragons', tiers: [25, 150, 600, 2000], reward: [3, 8, 20, 60], value: (s) => s.stats.fed },
+  { id: 'a_battles', title: 'Warrior', desc: 'Win battles', tiers: [10, 75, 300, 1000], reward: [4, 10, 25, 80], value: (s) => s.stats.wins },
+  { id: 'a_arena', title: 'Gladiator', desc: 'Win arena battles', tiers: [5, 40, 150, 500], reward: [4, 10, 25, 80], value: (s) => s.battle.arenaWins },
+  { id: 'a_camp', title: 'Adventurer', desc: 'Clear campaign stages', tiers: [10, 30, 60], reward: [10, 30, 100], value: (s) => s.battle.campaignCleared },
+  { id: 'a_heroic', title: 'Hero', desc: 'Clear heroic stages', tiers: [10, 30, 60], reward: [20, 60, 200], value: (s) => s.battle.heroicCleared },
+  { id: 'a_tower', title: 'Tower Climber', desc: 'Reach a tower floor', tiers: [10, 25, 50, 100], reward: [8, 20, 60, 200], value: (s) => s.tower.best },
+  { id: 'a_book', title: 'Collector', desc: 'Discover species', tiers: [10, 25, 45, 60, 75], reward: [5, 15, 40, 100, 300], value: (s) => s.discovered.length },
+  { id: 'a_level', title: 'Keeper', desc: 'Reach player level', tiers: [10, 20, 30, 40], reward: [10, 30, 60, 150], value: (s) => s.player.level },
+  { id: 'a_gold', title: 'Tycoon', desc: 'Collect gold in total', tiers: [50000, 500000, 5000000, 50000000], reward: [5, 15, 40, 120], value: (s) => s.stats.collected },
+  { id: 'a_dragons', title: 'Full Nest', desc: 'Own dragons at once', tiers: [10, 25, 50], reward: [5, 20, 60], value: (s) => s.dragons.length },
+  { id: 'a_stars', title: 'Star Trainer', desc: 'Empower dragons with stars', tiers: [1, 10, 30], reward: [10, 30, 100], value: (s) => s.dragons.reduce((n, d) => n + (d.stars || 0), 0) },
+  { id: 'a_isles', title: 'Explorer', desc: 'Own isles', tiers: [2, 3], reward: [30, 100], value: (s) => s.isles.length },
+  { id: 'a_friends', title: 'Popular', desc: 'Add friends', tiers: [1, 5, 15], reward: [5, 15, 40], value: (s) => s.friends.length },
+  { id: 'a_friendwins', title: 'Rivalry', desc: 'Beat friends\' teams', tiers: [5, 25, 100], reward: [5, 15, 50], value: (s) => s.stats.friendWins },
+  { id: 'a_gifts', title: 'Generous', desc: 'Gift codes redeemed with friends', tiers: [3, 20, 60], reward: [5, 15, 40], value: (s) => s.stats.giftsRedeemed },
+  { id: 'a_missions', title: 'Dutiful', desc: 'Complete daily missions', tiers: [5, 30, 100, 365], reward: [5, 15, 40, 150], value: (s) => s.stats.missionsDone },
+  { id: 'a_legend', title: 'Legend Keeper', desc: 'Own Legendary dragons', tiers: [1, 3, 8], reward: [30, 80, 200], value: (s, rarityOf) => s.dragons.filter((d) => rarityOf(d.species) === 'legendary').length },
+  { id: 'a_mythic', title: 'Myth Maker', desc: 'Own Mythic dragons', tiers: [1, 4], reward: [100, 400], value: (s, rarityOf) => s.dragons.filter((d) => rarityOf(d.species) === 'mythic').length },
+];

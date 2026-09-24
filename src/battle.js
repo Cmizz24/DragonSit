@@ -17,36 +17,43 @@ const MOVE_NAMES = {
   legend: ['Legend Fury', 'Ancient Roar'],
 };
 
-export function movesFor(speciesId) {
+// Mastery: moves grow stronger at levels 10, 20, 30 and 40.
+export function masteryTier(level) {
+  return Math.min(4, Math.floor(level / 10));
+}
+
+export function movesFor(speciesId, level = 1) {
   const sp = DRAGONS[speciesId];
   const moves = [];
-  const [e1, e2, e3] = sp.elements;
-  moves.push({ id: 'm1', name: MOVE_NAMES[e1][0], el: e1, power: 85, acc: 0.9 });
-  if (e2) moves.push({ id: 'm2', name: MOVE_NAMES[e2][0], el: e2, power: 80, acc: 0.92 });
-  else moves.push({ id: 'm2', name: MOVE_NAMES[e1][1], el: e1, power: 55, acc: 1 });
-  if (e3) moves.push({ id: 'm3', name: MOVE_NAMES[e3][0], el: e3, power: 80, acc: 0.92 });
-  else moves.push({ id: 'm3', name: 'Tail Slam', el: null, power: 75, acc: 0.88 });
-  moves.push({ id: 'm4', name: 'Bite', el: null, power: 55, acc: 1 });
+  const bonus = masteryTier(level) * 10;
+  const [e1, e2, e3, e4] = sp.elements;
+  moves.push({ id: 'm1', name: MOVE_NAMES[e1][0], el: e1, power: 85 + bonus, acc: 0.9 });
+  if (e2) moves.push({ id: 'm2', name: MOVE_NAMES[e2][0], el: e2, power: 80 + bonus, acc: 0.92 });
+  else moves.push({ id: 'm2', name: MOVE_NAMES[e1][1], el: e1, power: 55 + bonus, acc: 1 });
+  if (e3) moves.push({ id: 'm3', name: MOVE_NAMES[e3][0], el: e3, power: 80 + bonus, acc: 0.92 });
+  else moves.push({ id: 'm3', name: 'Tail Slam', el: null, power: 75 + bonus, acc: 0.88 });
+  if (e4) moves.push({ id: 'm4', name: MOVE_NAMES[e4][0], el: e4, power: 80 + bonus, acc: 0.92 });
+  else moves.push({ id: 'm4', name: 'Bite', el: null, power: 55 + bonus, acc: 1 });
   return moves;
 }
 
-export function makeUnit(speciesId, level, name, id) {
-  const st = dragonStats(speciesId, level);
+export function makeUnit(speciesId, level, name, id, stars = 0) {
+  const st = dragonStats(speciesId, level, stars);
   const sp = DRAGONS[speciesId];
   return {
     id: id || `${speciesId}_${Math.random().toString(36).slice(2, 7)}`,
-    species: speciesId, name: name || sp.name, level, elements: sp.elements,
+    species: speciesId, name: name || sp.name, level, stars, elements: sp.elements,
     maxHp: st.hp, hp: st.hp, atk: st.atk, def: st.def, spd: st.spd,
-    moves: movesFor(speciesId),
+    moves: movesFor(speciesId, level),
   };
 }
 
 export function unitsFromDragons(dragons) {
-  return dragons.map((d) => makeUnit(d.species, d.level, d.name, d.id));
+  return dragons.map((d) => makeUnit(d.species, d.level, d.name, d.id, d.stars || 0));
 }
 
 export function unitsFromTeam(team) {
-  return team.map((t) => makeUnit(t.species, t.level, t.name));
+  return team.map((t) => makeUnit(t.species, t.level, t.name, undefined, t.stars || 0));
 }
 
 export function createBattle(playerUnits, enemyUnits, meta = {}) {
@@ -140,8 +147,8 @@ export function playRound(battle, action) {
 export function makeArenaOpponent(state, teamLevels) {
   const avg = Math.max(1, Math.round(teamLevels.reduce((s, l) => s + l, 0) / Math.max(1, teamLevels.length)));
   const unlock = Math.min(10, Math.max(2, state.player.level));
-  const pool = DRAGON_LIST.filter((d) => d.rarity !== 'legendary' && (d.rarity !== 'epic' || state.player.level >= 8) && d.unlock <= unlock + 1);
-  const weights = pool.map((d) => ({ item: d.id, weight: d.rarity === 'common' ? 10 : d.rarity === 'rare' ? 5 : 2 }));
+  const pool = DRAGON_LIST.filter((d) => (d.rarity === 'common' || d.rarity === 'rare' || (d.rarity === 'epic' && state.player.level >= 8) || (d.rarity === 'legendary' && state.player.level >= 15)) && d.unlock <= unlock + 1);
+  const weights = pool.map((d) => ({ item: d.id, weight: d.rarity === 'common' ? 10 : d.rarity === 'rare' ? 5 : d.rarity === 'epic' ? 2 : 1 }));
   const team = [];
   for (let i = 0; i < 3; i++) {
     let id = weightedPick(weights);

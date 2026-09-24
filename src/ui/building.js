@@ -28,6 +28,10 @@ export const buildingPanel = {
       title: '',
       onMount: (m) => bindActions(m.body, {
         collect: () => this.collect(),
+        collectmine: () => {
+          const r = actions.collectMine(game.state, this.building);
+          if (r.amount > 0) { sfx.play('reward'); toast(`${ICON.gem} +${r.amount} gems`, 'good'); game.changed(); this.render(); }
+        },
         upgrade: () => this.upgrade(),
         move: () => { m.close(); game.panels.placement.start(this.building.def, this.building); },
         sell: () => this.sell(),
@@ -62,6 +66,7 @@ export const buildingPanel = {
     if (b.type === 'habitat') html = this.habitatHtml(b, def, st);
     else if (b.type === 'farm') html = this.farmHtml(b, def, st);
     else if (b.type === 'hatchery') html = this.hatcheryHtml(b, def, st);
+    else if (b.type === 'mine') html = this.mineHtml(b, def, st);
     else html = `<p class="dialog-text">${def.desc}</p>`;
     const up = eco.upgradeCost(b);
     html += `<div class="row gap wrap actions-row">
@@ -89,6 +94,17 @@ export const buildingPanel = {
     for (let i = dragons.length; i < capN; i++) html += `<button class="list-item tappable empty" data-action="shop" data-tab="dragons"><div class="info"><div class="name muted">Empty nest</div><div class="meta">Buy or breed a ${ELEMENTS[b.element].name} dragon</div></div></button>`;
     if (b.level < 3) html += `<p class="hint">Upgrading adds room for another dragon and raises the gold cap.</p>`;
     return html;
+  },
+
+  mineHtml(b, def, st) {
+    const cap = actions.mineCap(b);
+    const perHour = eco.mineGemsPerHour(b);
+    return `<div class="card">
+      <div class="row between"><span>${ICON.gem} <b>${Math.floor(b.gems)}</b> <span class="muted">/ ${cap}</span></span><span class="muted">1 gem every ${Math.round(1 / perHour)}h</span></div>
+      ${bar(b.gems, cap, 'time')}
+      <div class="meta">Next gem in ${fmtTime(((1 - (b.gems % 1)) / perHour) * 3600000)}</div>
+      <button class="btn primary wide" data-action="collectmine" ${b.gems < 1 ? 'disabled' : ''}>Collect ${Math.floor(b.gems)} gem${Math.floor(b.gems) === 1 ? '' : 's'}</button>
+    </div><p class="hint">Upgrading digs faster and stores more gems.</p>`;
   },
 
   farmHtml(b, def, st) {

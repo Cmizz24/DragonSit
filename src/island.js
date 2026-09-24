@@ -1,5 +1,5 @@
 // Isometric island renderer + touch input (pan, pinch-zoom, tap, build placement).
-import { ISLAND_SIZE, ZONES, zoneAt, BUILDINGS } from './data/buildings.js';
+import { ISLAND_SIZE, ZONES, ISLES, zoneAt, zoneCost, BUILDINGS } from './data/buildings.js';
 import { TILE_W, TILE_H, TOP, buildingSVG, buildingKey, imageSize, lockSVG } from './art/buildings.js';
 import { dragonSVG } from './art/dragon.js';
 import { getImage, imageReady, setImageLoadCallback } from './art/cache.js';
@@ -10,6 +10,12 @@ import { now, clamp, fmt } from './util.js';
 
 const HALF_W = TILE_W / 2;
 const HALF_H = TILE_H / 2;
+
+const THEMES = {
+  grass: { tileA: '#6fbf5a', tileB: '#66b552', edge: '#c9b46a', cliffL: '#8b6b3e', cliffR: '#6f5430', waterTop: '#2a7fbd', waterBottom: '#155a91', lockedA: 'rgba(20,60,90,0.35)', lockedB: 'rgba(20,60,90,0.28)', wave: 'rgba(255,255,255,0.08)' },
+  sky: { tileA: '#93d68c', tileB: '#89cd82', edge: '#f1ecd8', cliffL: '#c4d3e4', cliffR: '#a3b4c9', waterTop: '#a7dbff', waterBottom: '#4d9be0', lockedA: 'rgba(255,255,255,0.30)', lockedB: 'rgba(255,255,255,0.22)', wave: 'rgba(255,255,255,0.25)' },
+  ember: { tileA: '#5c4b45', tileB: '#544441', edge: '#7c5a3c', cliffL: '#3b2a26', cliffR: '#2a1c1a', waterTop: '#d0521f', waterBottom: '#5a1a0a', lockedA: 'rgba(40,10,5,0.45)', lockedB: 'rgba(40,10,5,0.38)', wave: 'rgba(255,200,120,0.18)' },
+};
 const DRAGON_SLOTS = [[0.9, 2.0], [2.1, 1.1], [1.1, 0.9], [2.2, 2.2]];
 
 const ICONS = {
@@ -18,6 +24,7 @@ const ICONS = {
   egg: `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><path d="M32 6 C 18 6 10 26 10 40 C 10 52 20 60 32 60 C 44 60 54 52 54 40 C 54 26 46 6 32 6 Z" fill="#fff3e0" stroke="#8d6e63" stroke-width="3"/><path d="M22 28 L 30 36 L 26 44 L 36 40 L 40 48" stroke="#8d6e63" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`,
   heart: `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><path d="M32 56 C 8 38 6 22 16 14 C 24 8 30 14 32 20 C 34 14 40 8 48 14 C 58 22 56 38 32 56 Z" fill="#ff4081" stroke="#880e4f" stroke-width="3"/></svg>`,
   alert: `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="#ff5252" stroke="#b71c1c" stroke-width="3"/><text x="32" y="44" text-anchor="middle" font-family="Arial" font-weight="700" font-size="36" fill="#fff">!</text></svg>`,
+  gem: `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><path d="M18 10h28l12 16-26 32L6 26z" fill="#7c4dff" stroke="#4527a0" stroke-width="3"/><path d="M18 10l14 16 14-16M6 26h52M32 26l-10 32M32 26l10 32" fill="none" stroke="#d1c4e9" stroke-width="2" opacity=".8"/></svg>`,
 };
 
 export class Island {
@@ -48,6 +55,14 @@ export class Island {
 
   get state() {
     return this.game.state;
+  }
+
+  get isle() {
+    return this.state.currentIsle || 0;
+  }
+
+  get theme() {
+    return THEMES[ISLES[this.isle].theme] || THEMES.grass;
   }
 
   resize() {
@@ -231,7 +246,7 @@ export class Island {
       this.game.onTapEmpty(null);
       return;
     }
-    if (!cellUnlocked(this.state, gx, gy)) {
+    if (!cellUnlocked(this.state, gx, gy, this.isle)) {
       this.game.onTapLocked(zoneAt(gx, gy));
       return;
     }
@@ -241,7 +256,7 @@ export class Island {
   // Hit test buildings by footprint first, then by image bounds so tall buildings are tappable.
   hitBuilding(sx, sy) {
     const [gx, gy] = this.screenToGrid(sx, sy);
-    const direct = buildingAt(this.state, gx, gy);
+    const direct = buildingAt(this.state, gx, gy, this.isle);
     if (direct) return direct;
     const sorted = this.sortedBuildings().reverse();
     for (const b of sorted) {
@@ -274,7 +289,7 @@ export class Island {
         for (let dx = -r; dx <= r && !found; dx++) {
           for (let dy = -r; dy <= r && !found; dy++) {
             if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-            if (canPlace(this.state, def.size, gx + dx, gy + dy, ignore)) found = [gx + dx, gy + dy];
+            if (canPlace(this.state, def.size, gx + dx, gy + dy, ignore, this.isle)) found = [gx + dx, gy + dy];
           }
         }
       }
@@ -289,7 +304,7 @@ export class Island {
     if (!p) return;
     p.gx = clamp(gx, 0, ISLAND_SIZE - p.size);
     p.gy = clamp(gy, 0, ISLAND_SIZE - p.size);
-    p.valid = canPlace(this.state, p.size, p.gx, p.gy, p.building ? p.building.id : null);
+    p.valid = canPlace(this.state, p.size, p.gx, p.gy, p.building ? p.building.id : null, this.isle);
     this.dirty = true;
     if (this.game.onPlacementChange) this.game.onPlacementChange(p);
   }
@@ -316,9 +331,11 @@ export class Island {
   }
 
   buildGround() {
-    const key = this.state.island.zones.join(',');
+    const isleState = this.state.isles.find((i) => i.id === this.isle);
+    const key = `${this.isle}:${isleState ? isleState.zones.join(',') : ''}`;
     if (this.groundCanvas && this.groundKey === key) return;
     this.groundKey = key;
+    const theme = this.theme;
     const scale = 2;
     const [minX] = this.gridToWorld(0, ISLAND_SIZE);
     const [maxX] = this.gridToWorld(ISLAND_SIZE, 0);
@@ -333,7 +350,7 @@ export class Island {
     g.scale(scale, scale);
     g.translate(-minX + pad, -minY + pad);
     this.groundOrigin = [minX - pad, minY - pad];
-    const unlocked = (x, y) => cellUnlocked(this.state, x, y);
+    const unlocked = (x, y) => cellUnlocked(this.state, x, y, this.isle);
     // cliff sides under unlocked tiles that border water on the bottom edges
     for (let gy = 0; gy < ISLAND_SIZE; gy++) {
       for (let gx = 0; gx < ISLAND_SIZE; gx++) {
@@ -341,7 +358,7 @@ export class Island {
         const [tx, ty] = this.gridToWorld(gx, gy);
         const depth = 22;
         if (!unlocked(gx, gy + 1)) {
-          g.fillStyle = '#8b6b3e';
+          g.fillStyle = theme.cliffL;
           g.beginPath();
           g.moveTo(tx - HALF_W, ty + HALF_H);
           g.lineTo(tx, ty + TILE_H);
@@ -351,7 +368,7 @@ export class Island {
           g.fill();
         }
         if (!unlocked(gx + 1, gy)) {
-          g.fillStyle = '#6f5430';
+          g.fillStyle = theme.cliffR;
           g.beginPath();
           g.moveTo(tx, ty + TILE_H);
           g.lineTo(tx + HALF_W, ty + HALF_H);
@@ -374,13 +391,13 @@ export class Island {
         g.closePath();
         if (isUnlocked) {
           const edge = !unlocked(gx, gy + 1) || !unlocked(gx + 1, gy) || !unlocked(gx - 1, gy) || !unlocked(gx, gy - 1);
-          g.fillStyle = edge ? '#c9b46a' : (gx + gy) % 2 === 0 ? '#6fbf5a' : '#66b552';
+          g.fillStyle = edge ? theme.edge : (gx + gy) % 2 === 0 ? theme.tileA : theme.tileB;
           g.fill();
           g.strokeStyle = 'rgba(0,0,0,0.06)';
           g.lineWidth = 1;
           g.stroke();
         } else {
-          g.fillStyle = (gx + gy) % 2 === 0 ? 'rgba(20,60,90,0.35)' : 'rgba(20,60,90,0.28)';
+          g.fillStyle = (gx + gy) % 2 === 0 ? theme.lockedA : theme.lockedB;
           g.fill();
           g.strokeStyle = 'rgba(255,255,255,0.08)';
           g.lineWidth = 1;
@@ -392,7 +409,8 @@ export class Island {
   }
 
   sortedBuildings() {
-    return [...this.state.buildings].sort((a, b) => (a.x + a.y + a.size) - (b.x + b.y + b.size) || a.x - b.x);
+    const isle = this.isle;
+    return this.state.buildings.filter((b) => (b.isle || 0) === isle).sort((a, b) => (a.x + a.y + a.size) - (b.x + b.y + b.size) || a.x - b.x);
   }
 
   buildingRect(b) {
@@ -421,14 +439,15 @@ export class Island {
     const ctx = this.ctx;
     const st = this.state;
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    // water
+    // water (or sky / lava depending on the isle theme)
+    const theme = this.theme;
     const grad = ctx.createLinearGradient(0, 0, 0, this.h);
-    grad.addColorStop(0, '#2a7fbd');
-    grad.addColorStop(1, '#155a91');
+    grad.addColorStop(0, theme.waterTop);
+    grad.addColorStop(1, theme.waterBottom);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, this.w, this.h);
     // subtle waves
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.strokeStyle = theme.wave;
     ctx.lineWidth = 2;
     const wavePhase = (t / 900) % (Math.PI * 2);
     for (let i = 0; i < 6; i++) {
@@ -450,8 +469,9 @@ export class Island {
     }
 
     // lock icons + price on locked zones
+    const isleState = st.isles.find((i) => i.id === this.isle);
     for (const z of ZONES) {
-      if (st.island.zones.includes(z.id)) continue;
+      if (!isleState || isleState.zones.includes(z.id)) continue;
       const [wx, wy] = this.gridToWorld(z.x + z.w / 2, z.y + z.h / 2);
       if (imageReady(this.lockImg)) ctx.drawImage(this.lockImg, wx - 20, wy - 30, 40, 40);
       ctx.font = 'bold 15px system-ui, sans-serif';
@@ -459,8 +479,9 @@ export class Island {
       ctx.fillStyle = '#fff';
       ctx.strokeStyle = 'rgba(0,0,0,0.5)';
       ctx.lineWidth = 3;
-      ctx.strokeText(`${fmt(z.cost.gold)} gold`, wx, wy + 28);
-      ctx.fillText(`${fmt(z.cost.gold)} gold`, wx, wy + 28);
+      const label = `${fmt(zoneCost(this.isle, z).gold)} gold`;
+      ctx.strokeText(label, wx, wy + 28);
+      ctx.fillText(label, wx, wy + 28);
     }
 
     // selection / placement footprint
@@ -559,6 +580,10 @@ export class Island {
     } else if (b.type === 'farm' && b.growing && tn >= b.growing.doneAt) icon = this.iconImgs.food;
     else if (b.type === 'hatchery' && st.eggs.some((e) => tn >= e.doneAt)) icon = this.iconImgs.egg;
     else if (b.type === 'breeding' && st.breeding && tn >= st.breeding.doneAt) icon = this.iconImgs.heart;
+    else if (b.type === 'mine' && b.gems >= 1) {
+      icon = this.iconImgs.gem;
+      label = `${Math.floor(b.gems)}`;
+    }
     if (!icon) return;
     const x = r.x + r.w / 2, y = r.y + r.h - b.size * TILE_H - 40 + bob;
     if (imageReady(icon)) ctx.drawImage(icon, x - 16, y - 32, 32, 32);

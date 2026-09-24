@@ -37,8 +37,11 @@
       <button class="round-btn" id="btn-daily" aria-label="Daily chest" title="Daily chest"><svg viewBox="0 0 24 24"><path d="M3 9h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" fill="#a0522d"/><path d="M3 9a9 6 0 0 1 18 0z" fill="#c8763b"/><rect x="3" y="9" width="18" height="3" fill="#8b4513"/><rect x="10" y="8" width="4" height="6" rx="1" fill="#ffd54f"/></svg></button>
       <button class="round-btn" id="btn-collect" aria-label="Collect all gold" title="Collect all"><svg viewBox="0 0 24 24"><circle cx="9" cy="14" r="6" fill="#ffd54f" stroke="#b8860b" stroke-width="1.5"/><circle cx="15" cy="10" r="6" fill="#ffe082" stroke="#b8860b" stroke-width="1.5"/><circle cx="15" cy="10" r="3" fill="none" stroke="#f9a825" stroke-width="1.5"/></svg></button>
       <button class="round-btn" id="btn-center" aria-label="Center map" title="Center map"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg></button>
+      <button class="round-btn" id="btn-isles" aria-label="Travel between isles" title="Isles" hidden><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/><path d="M3 21h18"/></svg></button>
       <button class="round-btn" id="btn-settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     </div>
+
+    <button id="event-banner" class="event-banner" aria-label="Weekly event"></button>
 
     <div id="a2hs" class="a2hs" hidden>
       <span>Tap <b>Share</b> → <b>Add to Home Screen</b> to play fullscreen.</span><button class="icon-btn" aria-label="Dismiss">&times;</button>
@@ -49,6 +52,7 @@
       <button data-open="dragons"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 14c0-5 3-8 8-8s8 3 8 8c0 3-2 5-5 5h-1l-2 2-2-2h-1c-3 0-5-2-5-5zm5-1a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm6 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM7 6L5 2l4 2zm10 0l2-4-4 2z"/></svg><span>Dragons</span></button>
       <button data-open="breed"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21C4 15 3 10 6 7c2-2 5-1 6 1 1-2 4-3 6-1 3 3 2 8-6 14z"/></svg><span>Breed</span></button>
       <button data-open="battle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 21l6-6M21 21l-6-6M3 3l9 9M21 3l-9 9M14 14l2 2M8 14l-2 2"/></svg><span>Battle</span></button>
+      <button data-open="friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Friends</span></button>
       <button data-open="quests"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Quests</span></button>
     </nav>
 

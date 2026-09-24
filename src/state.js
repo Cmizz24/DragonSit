@@ -3,23 +3,28 @@ import { BUILDINGS } from './data/buildings.js';
 import { DRAGONS } from './data/dragons.js';
 
 export const SAVE_KEY = 'dragonsit.save';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
-export function makeBuilding(defId, x, y) {
+export function makeBuilding(defId, x, y, isle = 0) {
   const def = BUILDINGS[defId];
-  const b = { id: uid('b'), def: defId, type: def.type, x, y, size: def.size, level: 1 };
+  const b = { id: uid('b'), def: defId, type: def.type, x, y, isle, size: def.size, level: 1 };
   if (def.type === 'habitat') {
     b.element = def.element;
     b.gold = 0;
     b.dragons = [];
   }
   if (def.type === 'farm') b.growing = null;
+  if (def.type === 'mine') b.gems = 0;
   return b;
 }
 
 export function makeDragon(speciesId, habitatId = null) {
   const sp = DRAGONS[speciesId];
-  return { id: uid('d'), species: speciesId, name: sp.name.replace(' Dragon', ''), level: 1, habitat: habitatId, bornAt: now() };
+  return { id: uid('d'), species: speciesId, name: sp.name.replace(' Dragon', ''), level: 1, stars: 0, habitat: habitatId, bornAt: now() };
+}
+
+export function newPlayerId() {
+  return Math.random().toString(36).slice(2, 6).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase();
 }
 
 export function defaultState() {
@@ -29,18 +34,24 @@ export function defaultState() {
     createdAt: t,
     lastTick: t,
     lastSaved: 0,
-    player: { name: 'Dragon Keeper', level: 1, xp: 0, gold: 1500, gems: 30, food: 120 },
-    island: { zones: [0] },
+    player: { id: newPlayerId(), name: 'Dragon Keeper', level: 1, xp: 0, gold: 1500, gems: 30, food: 120 },
+    isles: [{ id: 0, zones: [0] }],
+    currentIsle: 0,
     buildings: [],
     dragons: [],
     eggs: [],
     breeding: null,
     discovered: [],
     quests: { claimed: [] },
-    battle: { campaignCleared: 0, arenaWins: 0, arenaLosses: 0, trophies: 0, nextArenaAt: 0, streak: 0, lastTeam: [] },
-    stats: { collected: 0, hatched: 0, grown: 0, bred: 0, bought: [], battles: 0, fed: 0 },
+    achievements: { claimed: {} },
+    missions: { day: '', progress: {}, claimed: [], bonusClaimed: false },
+    tower: { best: 0, weekBest: 0, weekKey: '', run: null, weeklyClaimed: '' },
+    battle: { campaignCleared: 0, heroicCleared: 0, heroic: false, arenaWins: 0, arenaLosses: 0, trophies: 0, nextArenaAt: 0, streak: 0, lastTeam: [] },
+    friends: [],
+    gifts: { redeemed: [] },
+    stats: { collected: 0, hatched: 0, grown: 0, bred: 0, bought: [], battles: 0, fed: 0, wins: 0, friendWins: 0, giftsRedeemed: 0, missionsDone: 0, heroicWins: 0, towerFloors: 0 },
     daily: { nextAt: 0, streak: 0 },
-    settings: { sound: true, tutorialDone: false, welcomed: false },
+    settings: { sound: true, tutorialDone: false, welcomed: false, cloudUrl: '' },
   };
   const hab = makeBuilding('habitat_fire', 9, 7);
   s.buildings.push(hab);
@@ -49,7 +60,6 @@ export function defaultState() {
   s.buildings.push(makeBuilding('deco_tree', 7, 12));
   s.buildings.push(makeBuilding('deco_flowers', 8, 12));
   const d = makeDragon('flame', hab.id);
-  d.level = 1;
   s.dragons.push(d);
   hab.dragons.push(d.id);
   s.discovered.push('flame');
@@ -59,28 +69,38 @@ export function defaultState() {
 // Fill in any fields missing from older saves so the rest of the code can assume they exist.
 export function migrate(s) {
   const d = defaultState();
+  // v1 -> v2: a single island became a list of isles.
+  if (!s.isles) s.isles = [{ id: 0, zones: (s.island && s.island.zones) || [0] }];
+  delete s.island;
   const merge = (target, src) => {
     for (const k of Object.keys(src)) {
+      if (src[k] === undefined) continue;
       if (target[k] === undefined) target[k] = src[k];
-      else if (typeof src[k] === 'object' && src[k] && !Array.isArray(src[k]) && typeof target[k] === 'object') merge(target[k], src[k]);
+      else if (typeof src[k] === 'object' && src[k] && !Array.isArray(src[k]) && typeof target[k] === 'object' && target[k] && !Array.isArray(target[k])) merge(target[k], src[k]);
     }
   };
-  merge(s, { ...d, buildings: undefined, dragons: undefined, discovered: undefined, eggs: undefined });
+  merge(s, { ...d, buildings: undefined, dragons: undefined, discovered: undefined, eggs: undefined, isles: undefined, friends: undefined });
   s.buildings = s.buildings || [];
   s.dragons = s.dragons || [];
   s.eggs = s.eggs || [];
   s.discovered = s.discovered || [];
+  s.friends = s.friends || [];
+  if (!s.player.id) s.player.id = newPlayerId();
   // Drop references to species/buildings that no longer exist.
   s.buildings = s.buildings.filter((b) => BUILDINGS[b.def]);
   s.dragons = s.dragons.filter((dr) => DRAGONS[dr.species]);
   s.eggs = s.eggs.filter((e) => DRAGONS[e.species]);
   for (const b of s.buildings) {
+    if (b.isle === undefined) b.isle = 0;
     if (b.type === 'habitat') b.dragons = (b.dragons || []).filter((id) => s.dragons.some((dr) => dr.id === id));
+    if (b.type === 'mine' && b.gems === undefined) b.gems = 0;
   }
   for (const dr of s.dragons) {
+    if (dr.stars === undefined) dr.stars = 0;
     if (dr.habitat && !s.buildings.some((b) => b.id === dr.habitat)) dr.habitat = null;
     if (!s.discovered.includes(dr.species)) s.discovered.push(dr.species);
   }
+  if (!s.isles.some((i) => i.id === s.currentIsle)) s.currentIsle = 0;
   s.version = SAVE_VERSION;
   return s;
 }

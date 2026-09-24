@@ -1,12 +1,12 @@
 import { game } from '../game.js';
 import { DRAGONS, RARITY } from '../data/dragons.js';
 import { ELEMENTS, elementBadge, elementMultiplier } from '../data/elements.js';
-import { CAMPAIGN_STAGES, leagueFor, LEAGUES } from '../data/campaign.js';
+import { CAMPAIGN_STAGES, STAGE_COUNT, heroicStage, leagueFor, LEAGUES, towerFloor } from '../data/campaign.js';
 import { dragonSVG } from '../art/dragon.js';
 import * as actions from '../actions.js';
 import * as eco from '../economy.js';
 import { createBattle, playRound, unitsFromDragons, unitsFromTeam, makeArenaOpponent, describeMultiplier } from '../battle.js';
-import { openModal, bindActions, tabs, toast, ICON, confirmDialog, bar, rewardHtml, closeAllModals } from './ui.js';
+import { openModal, bindActions, tabs, toast, ICON, confirmDialog, bar, rewardHtml } from './ui.js';
 import { fmt, fmtTime, now, escapeHtml } from '../util.js';
 import { sfx } from '../audio.js';
 
@@ -30,10 +30,31 @@ export const battlePanel = {
       title: 'Battle',
       full: true,
       onMount: (m) => bindActions(m.body, {
-        stage: (d) => this.prepare({ mode: 'campaign', stageId: +d.id }),
+        stage: (d) => this.prepare({ mode: 'campaign', stageId: +d.id, heroic: game.state.battle.heroic }),
+        heroic: (d) => { game.state.battle.heroic = d.on === '1'; this.renderTab(); },
         arena: () => this.prepare({ mode: 'arena' }),
         skip: () => this.skipCooldown(),
-        reroll: () => { this.arenaOpp = null; this.render(); },
+        reroll: () => { this.arenaOpp = null; this.renderTab(); },
+        towerstart: () => this.prepare({ mode: 'tower' }),
+        towercontinue: () => this.fightTower(),
+        towerretreat: async () => {
+          const r = game.state.tower.run;
+          if (!r) return;
+          const ok = await confirmDialog('Retreat?', `End this run at floor ${r.floor - 1}? You keep everything you earned.`, 'Retreat');
+          if (!ok) return;
+          actions.towerRetreat(game.state);
+          game.changed();
+          this.renderTab();
+        },
+        towerweekly: () => {
+          const r = actions.claimTowerWeekly(game.state);
+          if (!r.ok) { toast(r.error, 'bad'); return; }
+          sfx.play('reward');
+          toast(`Weekly chest: ${rewardHtml(r.reward)}`, 'good', 3000);
+          game.levelUp(r.xpEvents);
+          game.changed();
+          this.renderTab();
+        },
       }),
       onClose: () => {
         this.modal = null;
@@ -48,7 +69,7 @@ export const battlePanel = {
   render() {
     const m = this.modal;
     if (!m) return;
-    m.body.innerHTML = `<div class="tabs"><button class="tab ${this.tab === 'campaign' ? 'active' : ''}" data-tab="campaign">Campaign</button><button class="tab ${this.tab === 'arena' ? 'active' : ''}" data-tab="arena">Arena</button></div><div class="tab-body" id="battle-body"></div>`;
+    m.body.innerHTML = `<div class="tabs"><button class="tab ${this.tab === 'campaign' ? 'active' : ''}" data-tab="campaign">Campaign</button><button class="tab ${this.tab === 'arena' ? 'active' : ''}" data-tab="arena">Arena</button><button class="tab ${this.tab === 'tower' ? 'active' : ''}" data-tab="tower">Tower</button></div><div class="tab-body" id="battle-body"></div>`;
     tabs(m.body, (t) => { this.tab = t; this.renderTab(); });
     this.renderTab();
   },
@@ -56,31 +77,45 @@ export const battlePanel = {
   renderTab() {
     const st = game.state;
     const body = this.modal.body.querySelector('#battle-body');
-    if (this.tab === 'campaign') {
-      const cleared = st.battle.campaignCleared;
-      const stages = CAMPAIGN_STAGES;
-      let html = `<p class="hint">Clear stages in order. First clears award full rewards; replays give 30%.</p>`;
-      let lastArea = '';
-      for (const s of stages) {
-        if (s.area !== lastArea) {
-          lastArea = s.area;
-          html += `<h3 class="group-title">${s.area}</h3>`;
-        }
-        const state = s.id <= cleared ? 'done' : s.id === cleared + 1 ? 'next' : 'locked';
-        html += `<div class="list-item stage ${state} ${s.boss ? 'boss' : ''}">
-          <div class="stage-num">${state === 'done' ? '✓' : s.id}</div>
-          <div class="info">
-            <div class="name">${s.name}</div>
-            <div class="team-preview">${s.team.map((t) => `<span class="mini ${state === 'locked' ? 'dim' : ''}">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 34 })}<i>${t.level}</i></span>`).join('')}</div>
-            <div class="meta">${rewardHtml(s.reward)}</div>
-          </div>
-          <button class="btn small ${state === 'next' ? 'primary' : ''}" data-action="stage" data-id="${s.id}" ${state === 'locked' ? 'disabled' : ''}>${state === 'done' ? 'Replay' : state === 'next' ? 'Fight' : ICON.lock}</button>
-        </div>`;
+    if (!body) return;
+    if (this.tab === 'campaign') this.renderCampaign(body, st);
+    else if (this.tab === 'tower') this.renderTower(body, st);
+    else this.renderArena(body, st);
+  },
+
+  renderCampaign(body, st) {
+    const heroicUnlocked = st.battle.campaignCleared >= STAGE_COUNT;
+    const heroic = heroicUnlocked && st.battle.heroic;
+    const cleared = heroic ? st.battle.heroicCleared : st.battle.campaignCleared;
+    let html = heroicUnlocked ? `<div class="row gap" style="margin-bottom:8px"><button class="btn small grow ${heroic ? '' : 'primary'}" data-action="heroic" data-on="0">Normal</button><button class="btn small grow ${heroic ? 'primary' : ''}" data-action="heroic" data-on="1">Heroic</button></div>` : '';
+    html += `<p class="hint">${heroic ? 'Heroic: enemies are 10 levels stronger and rewards are tripled.' : 'Clear stages in order. First clears award full rewards; replays give 30%.' + (st.battle.campaignCleared >= 30 ? ' Heroic mode unlocks after stage 60.' : '')}</p>`;
+    let lastArea = '';
+    const nextIdx = Math.min(cleared, STAGE_COUNT - 1);
+    for (const base of CAMPAIGN_STAGES) {
+      const s = heroic ? heroicStage(base) : base;
+      // Keep the list short: show cleared stages collapsed except the last few.
+      if (s.id < cleared - 3) continue;
+      if (s.id > cleared + 8) break;
+      if (s.area !== lastArea) {
+        lastArea = s.area;
+        html += `<h3 class="group-title">${s.area}</h3>`;
       }
-      body.innerHTML = html;
-      return;
+      const state = s.id <= cleared ? 'done' : s.id === cleared + 1 ? 'next' : 'locked';
+      html += `<div class="list-item stage ${state} ${s.boss ? 'boss' : ''}">
+        <div class="stage-num">${state === 'done' ? '✓' : s.id}</div>
+        <div class="info">
+          <div class="name">${s.name}</div>
+          <div class="team-preview">${s.team.map((t) => `<span class="mini ${state === 'locked' ? 'dim' : ''}">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 34 })}<i>${t.level}</i></span>`).join('')}</div>
+          <div class="meta">${rewardHtml(s.reward)}</div>
+        </div>
+        <button class="btn small ${state === 'next' ? 'primary' : ''}" data-action="stage" data-id="${s.id}" ${state === 'locked' ? 'disabled' : ''}>${state === 'done' ? 'Replay' : state === 'next' ? 'Fight' : ICON.lock}</button>
+      </div>`;
     }
-    // arena
+    if (cleared >= STAGE_COUNT) html += `<p class="hint center-text">${heroic ? 'You have conquered Heroic mode. Legendary!' : 'Campaign complete! Try Heroic mode.'}</p>`;
+    body.innerHTML = html;
+  },
+
+  renderArena(body, st) {
     if (!this.arenaOpp) {
       const top = [...st.dragons].sort((a, b) => b.level - a.level).slice(0, 3).map((d) => d.level);
       this.arenaOpp = makeArenaOpponent(st, top.length ? top : [1]);
@@ -99,7 +134,38 @@ export const battlePanel = {
       <div class="team-preview big">${opp.team.map((t) => `<span class="mini">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 56 })}<i>${t.level}</i><em>${DRAGONS[t.species].name.replace(' Dragon', '')}</em></span>`).join('')}</div>
       <div class="meta">Win for ~${fmt(150 + opp.level * 45)} gold, food and trophies. Losing costs 10 trophies.</div>
       ${cooling ? `<div class="row gap"><button class="btn ghost grow" disabled>Rest: <span data-arena-timer>${fmtTime(st.battle.nextArenaAt - now())}</span></button><button class="btn small" data-action="skip">${ICON.gem} ${actions.speedUpCost({ doneAt: st.battle.nextArenaAt })}</button></div>` : `<button class="btn primary wide" data-action="arena">Fight!</button>`}
+    </div>
+    <p class="hint center-text">Want to fight real people? Add friends in the Friends tab and battle their teams.</p>`;
+  },
+
+  renderTower(body, st) {
+    actions.ensureTowerWeek(st);
+    const run = st.tower.run;
+    const weekly = actions.towerWeeklyReward(st);
+    const weeklyDone = st.tower.weeklyClaimed === st.tower.weekKey;
+    let html = `<div class="card">
+      <div class="row between"><b>Dragon Tower</b><span class="muted">Best floor <b>${st.tower.best}</b></span></div>
+      <p class="hint">Climb endless floors with one team. Your dragons keep their damage between floors and heal a little after each win. Enemies get stronger every floor.</p>
+      <div class="row between"><span>This week's best: <b>${st.tower.weekBest}</b></span>${weeklyDone ? '<span class="tag">Chest claimed</span>' : `<button class="btn small ${st.tower.weekBest >= 5 ? 'primary' : ''}" data-action="towerweekly" ${st.tower.weekBest >= 5 ? '' : 'disabled'}>Weekly chest</button>`}</div>
+      <div class="meta">Weekly chest grows with your best floor: ${rewardHtml(weekly)} ${st.tower.weekBest < 5 ? '(reach floor 5)' : ''}</div>
     </div>`;
+    if (run) {
+      const floor = towerFloor(run.floor);
+      const units = actions.towerUnits(st);
+      html += `<div class="card">
+        <div class="row between"><b>Run in progress</b><span class="muted">Next: floor ${run.floor}${floor.boss ? ' (boss)' : ''}</span></div>
+        <div class="team-row left">${units.map((u) => `<div class="team-btn ${u.hp <= 0 ? 'ko' : ''}">${dragonSVG(u.species, eco.dragonStage(u.level), { size: 40 })}<div class="bar hp mini"><div class="bar-fill ${u.hp / u.maxHp > 0.5 ? 'ok' : u.hp / u.maxHp > 0.2 ? 'warn' : 'low'}" style="width:${(u.hp / u.maxHp) * 100}%"></div></div></div>`).join('')}</div>
+        <div class="meta">Enemies: ${floor.team.map((t) => `${DRAGONS[t.species].name.replace(' Dragon', '')} L${t.level}`).join(', ')}</div>
+        <div class="meta">Floor reward: ${rewardHtml(floor.reward)}</div>
+        <div class="row gap"><button class="btn primary grow" data-action="towercontinue" ${units.some((u) => u.hp > 0) ? '' : 'disabled'}>Fight floor ${run.floor}</button><button class="btn ghost" data-action="towerretreat">Retreat</button></div>
+      </div>`;
+    } else {
+      const preview = [1, 2, 3].map((n) => towerFloor(Math.max(1, st.tower.best + n)));
+      html += `<div class="card"><b>Start a new run</b><p class="hint">Pick up to 3 dragons. The run starts at floor 1.</p>
+        <div class="meta">Upcoming floors near your best: ${preview.map((f) => `F${f.floor} L${Math.round(f.team.reduce((s, t) => s + t.level, 0) / f.team.length)}`).join(' · ')}</div>
+        <button class="btn primary wide" data-action="towerstart">Start climbing</button></div>`;
+    }
+    body.innerHTML = html;
   },
 
   tickArena() {
@@ -131,9 +197,19 @@ export const battlePanel = {
     if (!ready.ok) { toast(ready.error, 'bad'); return; }
     let enemyTeam, title;
     if (meta.mode === 'campaign') {
-      const stage = CAMPAIGN_STAGES.find((s) => s.id === meta.stageId);
+      const stage = actions.campaignStageFor(st, meta.stageId, meta.heroic);
       enemyTeam = stage.team;
       title = stage.name;
+    } else if (meta.mode === 'friend') {
+      const f = st.friends.find((x) => x.id === meta.friendId);
+      if (!f) return;
+      enemyTeam = f.team.map((t) => ({ ...t }));
+      title = `vs ${f.name}`;
+      meta.level = Math.round(enemyTeam.reduce((s, t) => s + t.level, 0) / enemyTeam.length);
+    } else if (meta.mode === 'tower') {
+      if (st.tower.run) { this.fightTower(); return; }
+      enemyTeam = towerFloor(1).team;
+      title = 'Dragon Tower';
     } else {
       if (now() < st.battle.nextArenaAt) { toast('Your dragons are still resting'); return; }
       enemyTeam = this.arenaOpp.team;
@@ -144,7 +220,7 @@ export const battlePanel = {
     const selected = st.battle.lastTeam.filter((id) => st.dragons.some((d) => d.id === id)).slice(0, 3);
     if (selected.length === 0) [...st.dragons].sort((a, b) => b.level - a.level).slice(0, 3).forEach((d) => selected.push(d.id));
     const m = openModal({
-      title: 'Choose your team',
+      title: meta.mode === 'tower' ? 'Choose your tower team' : 'Choose your team',
       full: true,
       onMount: (mm) => bindActions(mm.body, {
         toggle: (d) => {
@@ -159,14 +235,21 @@ export const battlePanel = {
           st.battle.lastTeam = [...selected];
           mm.close();
           if (this.modal) this.modal.close();
+          if (meta.mode === 'tower') {
+            const r = actions.towerStart(st, selected);
+            if (!r.ok) { toast(r.error, 'bad'); return; }
+            game.changed();
+            this.fightTower();
+            return;
+          }
           const team = selected.map((id) => st.dragons.find((d) => d.id === id));
-          this.fight(meta, team, enemyTeam);
+          this.fight(meta, unitsFromDragons(team), unitsFromTeam(enemyTeam));
         },
       }),
     });
     const render = () => {
       const list = [...st.dragons].sort((a, b) => b.level - a.level);
-      m.body.innerHTML = `<div class="card"><div class="meta">Enemy team</div><div class="team-preview big">${enemyTeam.map((t) => `<span class="mini">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 48 })}<i>${t.level}</i><em>${DRAGONS[t.species].name.replace(' Dragon', '')}</em></span>`).join('')}</div></div>
+      m.body.innerHTML = `<div class="card"><div class="meta">${meta.mode === 'tower' ? 'Floor 1 enemies (they get stronger every floor)' : 'Enemy team'}</div><div class="team-preview big">${enemyTeam.map((t) => `<span class="mini">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 48 })}<i>${t.level}</i><em>${escapeHtml(t.name || DRAGONS[t.species].name.replace(' Dragon', ''))}</em></span>`).join('')}</div></div>
         <p class="hint">Pick up to 3 dragons (${selected.length}/3). Element advantages deal 1.75x damage.</p>
         ${list.map((d) => {
           const sp = DRAGONS[d.species];
@@ -174,18 +257,29 @@ export const battlePanel = {
           const adv = enemyTeam.some((t) => sp.elements.some((e) => elementMultiplier(e, DRAGONS[t.species].elements) >= 1.5));
           return `<button class="list-item tappable ${idx >= 0 ? 'selected' : ''}" data-action="toggle" data-id="${d.id}">
             <div class="thumb">${dragonSVG(d.species, eco.dragonStage(d.level), { size: 56 })}</div>
-            <div class="info"><div class="name">${escapeHtml(d.name)} <span class="muted">Lv ${d.level}</span></div><div class="badges">${sp.elements.map((e) => elementBadge(e, 14)).join('')} ${adv ? '<span class="tag good">Advantage</span>' : ''}</div></div>
+            <div class="info"><div class="name">${escapeHtml(d.name)} <span class="muted">Lv ${d.level}</span> ${starsHtml(d.stars)}</div><div class="badges">${sp.elements.map((e) => elementBadge(e, 14)).join('')} ${adv ? '<span class="tag good">Advantage</span>' : ''}</div></div>
             <span class="pick-mark">${idx >= 0 ? idx + 1 : ''}</span></button>`;
         }).join('')}
-        <div class="sticky-bottom"><button class="btn primary wide" data-action="fight">${ICON.swords} Fight!</button></div>`;
+        <div class="sticky-bottom"><button class="btn primary wide" data-action="fight">${ICON.swords} ${meta.mode === 'tower' ? 'Start climbing' : 'Fight!'}</button></div>`;
     };
     render();
   },
 
+  fightTower() {
+    const st = game.state;
+    const run = st.tower.run;
+    if (!run) return;
+    const units = actions.towerUnits(st);
+    if (!units.some((u) => u.hp > 0)) { toast('Your team is knocked out. Retreat to start a new run.', 'bad'); return; }
+    const floor = towerFloor(run.floor);
+    if (this.modal) this.modal.close();
+    this.fight({ mode: 'tower', floor: run.floor, title: floor.name }, units, unitsFromTeam(floor.team));
+  },
+
   // ---------- the battle screen ----------
-  fight(meta, playerDragons, enemyTeam) {
+  fight(meta, playerUnits, enemyUnits) {
     const root = document.getElementById('battle-root');
-    const battle = createBattle(unitsFromDragons(playerDragons), unitsFromTeam(enemyTeam), meta);
+    const battle = createBattle(playerUnits, enemyUnits, meta);
     this.battle = battle;
     this.busy = false;
     root.hidden = false;
@@ -206,7 +300,7 @@ export const battlePanel = {
       switch: (d) => this.turn({ type: 'switch', index: +d.i }),
       flee: async () => {
         if (this.busy) return;
-        const ok = await confirmDialog('Flee?', 'Running away counts as a loss.', 'Flee', true);
+        const ok = await confirmDialog('Flee?', meta.mode === 'tower' ? 'Fleeing ends your tower run.' : 'Running away counts as a loss.', 'Flee', true);
         if (ok) this.finish(false);
       },
     });
@@ -223,10 +317,10 @@ export const battlePanel = {
     const root = document.getElementById('battle-root');
     const el = root.querySelector(`.fighter[data-side="${side}"]`);
     const u = this.unit(side);
-    el.querySelector('.hp-name').innerHTML = `${escapeHtml(u.name)} <span class="lv">Lv ${u.level}</span> ${u.elements.map((e) => elementBadge(e, 12)).join('')}`;
+    el.querySelector('.hp-name').innerHTML = `${escapeHtml(u.name)} <span class="lv">Lv ${u.level}</span> ${u.stars ? `<span class="stars">${'★'.repeat(u.stars)}</span>` : ''} ${u.elements.map((e) => elementBadge(e, 12)).join('')}`;
     const sprite = el.querySelector('.sprite');
     sprite.innerHTML = dragonSVG(u.species, eco.dragonStage(u.level), { size: 200, facing: side === 'player' ? 'right' : 'left' });
-    sprite.className = 'sprite' + (animate ? ' enter' : '');
+    sprite.className = 'sprite' + (animate ? ' enter' : '') + (u.hp <= 0 ? ' faint' : '');
     this.updateHp(side);
   },
 
@@ -244,6 +338,7 @@ export const battlePanel = {
   renderControls() {
     const root = document.getElementById('battle-root');
     const b = this.battle;
+    if (!b) return;
     const pu = this.unit('player');
     const eu = this.unit('enemy');
     root.querySelector('[data-round]').textContent = `Round ${b.round}`;
@@ -280,10 +375,10 @@ export const battlePanel = {
     const events = playRound(this.battle, action);
     await this.animate(events);
     this.busy = false;
-    if (this.battle.over) {
+    if (this.battle && this.battle.over) {
       await sleep(500);
       this.finish(this.battle.winner === 'player');
-    } else {
+    } else if (this.battle) {
       this.renderControls();
     }
   },
@@ -291,7 +386,7 @@ export const battlePanel = {
   async animate(events) {
     const root = document.getElementById('battle-root');
     for (const ev of events) {
-      if (!root.contains(root.querySelector('.battle-screen'))) return;
+      if (!this.battle || !root.querySelector('.battle-screen')) return;
       if (ev.type === 'switch') {
         const u = this.battle[ev.side].find((x) => x.id === ev.unit);
         this.log(ev.side === 'player' ? `Go, ${escapeHtml(u.name)}!` : `${escapeHtml(u.name)} steps in!`);
@@ -334,32 +429,72 @@ export const battlePanel = {
     }
   },
 
+  closeScreen() {
+    const root = document.getElementById('battle-root');
+    root.hidden = true;
+    root.innerHTML = '';
+    this.battle = null;
+  },
+
   finish(won) {
     const st = game.state;
-    const meta = this.battle ? this.battle.meta : { mode: 'arena', level: 1 };
+    const battle = this.battle;
+    const meta = battle ? battle.meta : { mode: 'arena', level: 1 };
+    const heroSpecies = battle ? battle.player[0].species : 'flame';
+    const heroLevel = battle ? battle.player[0].level : 1;
+    sfx.play(won ? 'win' : 'lose');
+
+    if (meta.mode === 'tower') {
+      const r = actions.towerAfterFloor(st, battle.player, won);
+      game.changed();
+      game.save();
+      const alive = battle.player.some((u) => u.hp > 0);
+      openModal({
+        title: won ? `Floor ${r.floor} cleared!` : `Run over at floor ${r.floor}`,
+        cls: `center ${won ? 'celebrate' : ''}`,
+        hideClose: true,
+        html: `<div class="result-art">${won ? dragonSVG(heroSpecies, eco.dragonStage(heroLevel), { size: 130 }) : '<div class="big-icon">💤</div>'}</div>
+          <p class="dialog-text">${won ? `Your team heals a little. Floor ${r.nextFloor} awaits${towerFloor(r.nextFloor).boss ? ' with a boss' : ''}.` : `You reached floor ${r.floor}. Best: ${st.tower.best}.`}</p>
+          <p class="reward-line">${rewardHtml(r.reward)}</p>
+          <div class="row gap center">
+            <button class="btn ghost" data-action="stop">${won ? 'Retreat' : 'Back'}</button>
+            ${won && alive ? '<button class="btn primary" data-action="next">Next floor</button>' : ''}
+          </div>`,
+        onMount: (m) => bindActions(m.body, {
+          stop: () => { m.close(); this.closeScreen(); if (won) { actions.towerRetreat(st); game.changed(); } this.open('tower'); game.levelUp(r.xpEvents); },
+          next: () => { m.close(); this.closeScreen(); game.levelUp(r.xpEvents); this.fightTower(); },
+        }),
+      });
+      return;
+    }
+
     const { reward, xpEvents } = actions.applyBattleResult(st, meta, won);
     if (meta.mode === 'arena') this.arenaOpp = null;
-    sfx.play(won ? 'win' : 'lose');
     game.changed();
     game.save();
-    const root = document.getElementById('battle-root');
-    const nextStage = meta.mode === 'campaign' && won && CAMPAIGN_STAGES.find((s) => s.id === meta.stageId + 1) && st.battle.campaignCleared >= meta.stageId;
+    const progress = meta.heroic ? st.battle.heroicCleared : st.battle.campaignCleared;
+    const nextStage = meta.mode === 'campaign' && won && meta.stageId < STAGE_COUNT && progress >= meta.stageId;
+    const backTab = meta.mode === 'friend' ? null : meta.mode;
     openModal({
       title: won ? 'Victory!' : 'Defeat',
       cls: `center ${won ? 'celebrate' : ''}`,
       hideClose: true,
-      html: `<div class="result-art">${won ? dragonSVG(this.battle.player[0].species, eco.dragonStage(this.battle.player[0].level), { size: 130 }) : '<div class="big-icon">💤</div>'}</div>
-        <p class="dialog-text">${won ? (meta.mode === 'campaign' ? 'Stage cleared!' : `You defeated ${escapeHtml(meta.title.replace('Arena vs ', ''))}!`) : 'Your dragons need more training. Feed them to level up, and pick elements your enemies are weak to.'}</p>
+      html: `<div class="result-art">${won ? dragonSVG(heroSpecies, eco.dragonStage(heroLevel), { size: 130 }) : '<div class="big-icon">💤</div>'}</div>
+        <p class="dialog-text">${won ? (meta.mode === 'campaign' ? 'Stage cleared!' : meta.mode === 'friend' ? `You beat ${escapeHtml(meta.title.replace('vs ', ''))}'s team! Brag about it.` : `You defeated ${escapeHtml(meta.title.replace('Arena vs ', ''))}!`) : 'Your dragons need more training. Feed them to level up, and pick elements your enemies are weak to.'}</p>
         <p class="reward-line">${rewardHtml(reward)}</p>
         <div class="row gap center">
           <button class="btn ghost" data-action="done">Back</button>
-          ${nextStage ? `<button class="btn primary" data-action="next">Next stage</button>` : meta.mode === 'arena' ? '' : `<button class="btn primary" data-action="retry">${won ? 'Replay' : 'Try again'}</button>`}
+          ${nextStage ? `<button class="btn primary" data-action="next">Next stage</button>` : meta.mode === 'campaign' ? `<button class="btn primary" data-action="retry">${won ? 'Replay' : 'Try again'}</button>` : ''}
         </div>`,
       onMount: (m) => bindActions(m.body, {
-        done: () => { m.close(); root.hidden = true; root.innerHTML = ''; this.battle = null; this.open(meta.mode); game.levelUp(xpEvents); },
-        next: () => { m.close(); root.hidden = true; root.innerHTML = ''; this.battle = null; this.prepare({ mode: 'campaign', stageId: meta.stageId + 1 }); game.levelUp(xpEvents); },
-        retry: () => { m.close(); root.hidden = true; root.innerHTML = ''; this.battle = null; this.prepare({ mode: 'campaign', stageId: meta.stageId }); game.levelUp(xpEvents); },
+        done: () => { m.close(); this.closeScreen(); if (backTab) this.open(backTab); else game.panels.friends.open(); game.levelUp(xpEvents); },
+        next: () => { m.close(); this.closeScreen(); this.prepare({ mode: 'campaign', stageId: meta.stageId + 1, heroic: meta.heroic }); game.levelUp(xpEvents); },
+        retry: () => { m.close(); this.closeScreen(); this.prepare({ mode: 'campaign', stageId: meta.stageId, heroic: meta.heroic }); game.levelUp(xpEvents); },
       }),
     });
   },
 };
+
+export function starsHtml(n) {
+  return n ? `<span class="stars">${'★'.repeat(n)}</span>` : '';
+}

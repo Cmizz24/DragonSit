@@ -38,6 +38,8 @@ add({ id: 'temple_1', type: 'temple', name: 'Temple of Growth', size: 2, cost: {
 add({ id: 'temple_2', type: 'temple', name: 'Temple of Wisdom', size: 2, cost: { gold: 90000 }, unlock: 10, xp: 800, max: 1, levelCap: 20, requires: 'temple_1', desc: 'Raises the dragon level cap to 20.' });
 add({ id: 'temple_3', type: 'temple', name: 'Temple of Power', size: 2, cost: { gold: 350000 }, unlock: 15, xp: 2000, max: 1, levelCap: 25, requires: 'temple_2', desc: 'Raises the dragon level cap to 25.' });
 add({ id: 'temple_4', type: 'temple', name: 'Temple of Legends', size: 2, cost: { gold: 1200000 }, unlock: 20, xp: 5000, max: 1, levelCap: 30, requires: 'temple_3', desc: 'Raises the dragon level cap to 30.' });
+add({ id: 'temple_5', type: 'temple', name: 'Temple of Eternity', size: 2, cost: { gold: 4000000 }, unlock: 28, xp: 12000, max: 1, levelCap: 40, requires: 'temple_4', desc: 'Raises the dragon level cap to 40.' });
+add({ id: 'mine', type: 'mine', name: 'Crystal Mine', size: 2, cost: { gold: 150000 }, unlock: 9, xp: 600, max: 3, gemHours: [8, 6, 4], upgradeCost: [400000, 1200000], desc: 'Slowly digs up gems. One gem every 8 hours; upgrade to dig faster.' });
 
 add({ id: 'deco_tree', type: 'deco', name: 'Oak Tree', size: 1, cost: { gold: 80 }, unlock: 1, xp: 5, desc: 'A leafy friend for your island.' });
 add({ id: 'deco_flowers', type: 'deco', name: 'Flower Bed', size: 1, cost: { gold: 60 }, unlock: 1, xp: 5, desc: 'Bright blooms that dragons love to sniff.' });
@@ -45,6 +47,12 @@ add({ id: 'deco_lantern', type: 'deco', name: 'Stone Lantern', size: 1, cost: { 
 add({ id: 'deco_fountain', type: 'deco', name: 'Fountain', size: 2, cost: { gold: 1500 }, unlock: 4, xp: 40, desc: 'A sparkling centrepiece.' });
 add({ id: 'deco_statue', type: 'deco', name: 'Dragon Statue', size: 2, cost: { gems: 40 }, unlock: 6, xp: 100, desc: 'Honour the legends of old.' });
 add({ id: 'deco_crystal', type: 'deco', name: 'Crystal Spire', size: 1, cost: { gems: 25 }, unlock: 8, xp: 60, desc: 'Hums with ancient magic.' });
+add({ id: 'deco_bonfire', type: 'deco', name: 'Bonfire', size: 1, cost: { gold: 400 }, unlock: 2, xp: 10, desc: 'Dragons love to gather round it.' });
+add({ id: 'deco_pond', type: 'deco', name: 'Lily Pond', size: 2, cost: { gold: 2500 }, unlock: 5, xp: 50, desc: 'Cool water and croaking frogs.' });
+add({ id: 'deco_windmill', type: 'deco', name: 'Windmill', size: 2, cost: { gold: 8000 }, unlock: 7, xp: 120, desc: 'Turns lazily in the sea breeze.' });
+add({ id: 'deco_arch', type: 'deco', name: 'Rainbow Arch', size: 2, cost: { gems: 60 }, unlock: 10, xp: 200, desc: 'A permanent rainbow. Very rare weather.' });
+add({ id: 'deco_totem', type: 'deco', name: 'Dragon Totem', size: 1, cost: { gold: 30000 }, unlock: 12, xp: 250, desc: 'Carved by the first dragon keepers.' });
+add({ id: 'deco_obelisk', type: 'deco', name: 'Ancient Obelisk', size: 1, cost: { gems: 120 }, unlock: 18, xp: 600, desc: 'Covered in glowing runes.' });
 
 export function building(id) {
   return BUILDINGS[id];
@@ -59,7 +67,7 @@ export const FOOD_OPTIONS = [
   { id: 'golden', name: 'Golden Fruit', food: 5000, cost: 6500, time: 7200, unlock: 4 },
 ];
 
-// Island layout: 22x22 grid split into zones. Zone 0 is free; others are bought in order.
+// Island layout: every isle is a 22x22 grid split into zones. Zone 0 comes with the isle; others are bought in order.
 export const ISLAND_SIZE = 22;
 export const ZONES = [
   { id: 0, x: 5, y: 5, w: 12, h: 12, cost: null },
@@ -69,9 +77,21 @@ export const ZONES = [
   { id: 4, x: 5, y: 0, w: 17, h: 5, cost: { gold: 400000 }, gems: 350 },
 ];
 
+// Extra isles unlock more room. Zone prices scale with the isle's multiplier.
+export const ISLES = [
+  { id: 0, name: 'Home Isle', theme: 'grass', unlock: 1, cost: null, zoneMult: 1, desc: 'Where it all began.' },
+  { id: 1, name: 'Sky Isle', theme: 'sky', unlock: 12, cost: { gold: 250000 }, zoneMult: 4, desc: 'A floating island above the clouds. Twice the room for habitats.' },
+  { id: 2, name: 'Ember Isle', theme: 'ember', unlock: 20, cost: { gold: 2000000 }, zoneMult: 12, desc: 'Volcanic rock and glowing rivers. Legends nest here.' },
+];
+
 export function zoneAt(x, y) {
   for (const z of ZONES) {
     if (x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h) return z.id;
   }
   return -1;
+}
+
+export function zoneCost(isleId, zone) {
+  const mult = ISLES[isleId].zoneMult;
+  return { gold: zone.cost ? zone.cost.gold * mult : 0, gems: Math.round(zone.gems * Math.sqrt(mult)) };
 }

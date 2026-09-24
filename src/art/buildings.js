@@ -200,8 +200,21 @@ function hatchery(c, eggColors, level) {
   return s;
 }
 
+function mine(c, level) {
+  let s = platform(c, 2, '#7d6b5d', '#4e3c30');
+  const [x, y] = c.iso(1, 1);
+  s += `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><path d="M-58 4 L -30 -52 L 0 -64 L 32 -50 L 58 4 Z" fill="#6d5c50" stroke="#3e2f26" stroke-width="2" stroke-linejoin="round"/><path d="M-30 -52 L 0 -64 L 32 -50 L 10 -40 L -12 -38 Z" fill="#8a7869"/>`;
+  s += `<path d="M-22 4 L -22 -22 A 22 22 0 0 1 22 -22 L 22 4 Z" fill="#1c1410"/><path d="M-26 4 L -26 -22 A 26 26 0 0 1 26 -22 L 26 4 M-26 -6 L 26 -6" fill="none" stroke="#a1774a" stroke-width="5"/></g>`;
+  s += c.crystal(0.35, 1.7, 0.9, '#b388ff', '#ede7f6') + c.crystal(1.75, 0.5, 0.8, '#f48fb1', '#fce4ec');
+  if (level >= 2) s += c.crystal(0.4, 0.4, 1.1, '#80d8ff', '#e1f5fe');
+  if (level >= 3) s += c.crystal(1.7, 1.7, 1.2, '#ffd740', '#fff8e1');
+  const [cx, cy] = c.iso(1.65, 1.35);
+  s += `<g transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)})"><path d="M-14 -4 L -10 -16 L 12 -16 L 14 -4 Z" fill="#5d4037" stroke="#3e2723" stroke-width="1.5"/><circle cx="-8" cy="-2" r="3.5" fill="#263238"/><circle cx="8" cy="-2" r="3.5" fill="#263238"/><circle cx="-4" cy="-18" r="4" fill="#b388ff"/><circle cx="4" cy="-19" r="3.5" fill="#f48fb1"/></g>`;
+  return s;
+}
+
 function temple(c, tier) {
-  const cols = ['#ffe082', '#80deea', '#ce93d8', '#ffab91'][tier - 1];
+  const cols = ['#ffe082', '#80deea', '#ce93d8', '#ffab91', '#f48fb1'][tier - 1];
   let s = platform(c, 2, '#e0d6bd', '#a89f86');
   s += c.box(0.25, 0.25, 1.5, 1.5, 6, '#f5f0e1', '#c9c0a4', '#e0d8c0');
   for (const [u, v] of [[0.35, 0.35], [1.5, 0.35], [0.35, 1.5], [1.5, 1.5]]) s += c.box(u, v, 0.18, 0.18, 46, '#fffbf0', '#cfc6ae', '#e8e0c8');
@@ -233,6 +246,29 @@ function deco(c, id) {
     }
     case 'deco_crystal':
       return c.crystal(0.5, 0.5, 1.4, '#b388ff', '#ede7f6');
+    case 'deco_bonfire': {
+      const [x, y] = c.iso(0.5, 0.5);
+      return c.ell(0.5, 0.5, 0.4, '#6d4c41') + `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><path d="M-16 0 L 16 -8 M-16 -8 L 16 0" stroke="#5d4037" stroke-width="6" stroke-linecap="round"/><path d="M0 -44 C 12 -30 14 -18 8 -8 C 4 -14 2 -18 0 -22 C -2 -16 -8 -12 -8 -6 C -16 -18 -10 -30 0 -44 Z" fill="#ff7043"/><path d="M0 -30 C 6 -22 6 -14 2 -8 C 0 -12 -2 -16 -3 -18 C -5 -14 -6 -12 -5 -8 C -9 -16 -6 -24 0 -30 Z" fill="#ffd54f"/><circle cx="0" cy="-26" r="22" fill="#ffab40" opacity=".18"/></g>`;
+    }
+    case 'deco_pond':
+      return c.ell(1, 1, 0.95, '#c9b46a') + c.ell(1, 1, 0.85, '#2196f3') + c.ell(0.85, 0.9, 0.45, '#64b5f6') + c.ell(1.25, 1.2, 0.16, '#66bb6a') + c.ell(0.75, 1.3, 0.14, '#66bb6a') + `<circle cx="${c.iso(1.25, 1.2)[0]}" cy="${c.iso(1.25, 1.2)[1] - 4}" r="4" fill="#f06292"/>` + `<g transform="translate(${c.iso(1.8, 0.4)[0].toFixed(1)} ${c.iso(1.8, 0.4)[1].toFixed(1)})"><path d="M0 0 L 0 -26 M6 2 L 8 -22 M-6 2 L -7 -20" stroke="#7cb342" stroke-width="3" stroke-linecap="round"/><ellipse cx="0" cy="-28" rx="3" ry="6" fill="#795548"/><ellipse cx="8" cy="-24" rx="2.5" ry="5" fill="#795548"/></g>`;
+    case 'deco_windmill': {
+      const [x, y] = c.iso(1, 1);
+      return c.box(0.55, 0.55, 0.9, 0.9, 40, '#efebe9', '#a1887f', '#bcaaa4') + `<g transform="translate(${x.toFixed(1)} ${(y - 40).toFixed(1)})"><path d="M-30 -14 L 0 -14 L 30 -14 L 0 -30 Z" fill="#8d6e63"/><circle cx="0" cy="-22" r="5" fill="#5d4037"/><g stroke="#5d4037" stroke-width="3" fill="#fff3e0"><path d="M0 -22 L 34 -50 L 40 -44 L 4 -18 Z"/><path d="M0 -22 L 34 6 L 28 12 L -4 -18 Z"/><path d="M0 -22 L -34 6 L -40 0 L -4 -26 Z"/><path d="M0 -22 L -34 -50 L -28 -56 L 4 -26 Z"/></g></g>`;
+    }
+    case 'deco_arch': {
+      const [x, y] = c.iso(1, 1);
+      const bands = ['#f44336', '#ff9800', '#ffeb3b', '#4caf50', '#2196f3', '#9c27b0'];
+      return c.ell(0.5, 1.5, 0.25, '#fff') + c.ell(1.5, 0.5, 0.25, '#fff') + `<g transform="translate(${x.toFixed(1)} ${(y - 6).toFixed(1)})">${bands.map((col, i) => `<path d="M${-50 + i * 6} 0 A ${50 - i * 6} ${50 - i * 6} 0 0 1 ${50 - i * 6} 0" fill="none" stroke="${col}" stroke-width="6"/>`).join('')}</g>`;
+    }
+    case 'deco_totem': {
+      const [x, y] = c.iso(0.5, 0.5);
+      return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><ellipse cx="0" cy="2" rx="16" ry="6" fill="#000" opacity=".2"/><rect x="-12" y="-70" width="24" height="70" rx="4" fill="#8d6e63" stroke="#4e342e" stroke-width="2"/><rect x="-12" y="-48" width="24" height="4" fill="#4e342e"/><rect x="-12" y="-26" width="24" height="4" fill="#4e342e"/><circle cx="-5" cy="-60" r="3" fill="#ffd54f"/><circle cx="5" cy="-60" r="3" fill="#ffd54f"/><path d="M-6 -52 q 6 4 12 0" stroke="#ffd54f" stroke-width="2" fill="none"/><circle cx="-5" cy="-38" r="3" fill="#80deea"/><circle cx="5" cy="-38" r="3" fill="#80deea"/><path d="M-6 -30 q 6 -4 12 0" stroke="#80deea" stroke-width="2" fill="none"/><circle cx="-5" cy="-16" r="3" fill="#f48fb1"/><circle cx="5" cy="-16" r="3" fill="#f48fb1"/><path d="M-16 -74 L 0 -84 L 16 -74 Z" fill="#ff7043" stroke="#4e342e" stroke-width="2"/></g>`;
+    }
+    case 'deco_obelisk': {
+      const [x, y] = c.iso(0.5, 0.5);
+      return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><ellipse cx="0" cy="2" rx="16" ry="6" fill="#000" opacity=".25"/><path d="M-12 0 L -8 -84 L 0 -96 L 8 -84 L 12 0 Z" fill="#37474f" stroke="#102027" stroke-width="2"/><path d="M-2 -70 h4 M-3 -60 h6 M-2 -50 h4 M-3 -40 h6 M-2 -30 h4 M-3 -20 h6" stroke="#80deea" stroke-width="3" stroke-linecap="round"/><path d="M0 -96 L 0 -110" stroke="#80deea" stroke-width="3" stroke-linecap="round" opacity=".7"/><circle cx="0" cy="-60" r="26" fill="#80deea" opacity=".12"/></g>`;
+    }
   }
   return '';
 }
@@ -247,6 +283,7 @@ export function buildingSVG(b, extra = {}) {
   else if (def.type === 'breeding') inner = breeding(c, !!extra.breedingActive);
   else if (def.type === 'hatchery') inner = hatchery(c, (extra.eggs || []).map((sp) => ELEMENTS[sp.elements[0]]), b.level);
   else if (def.type === 'temple') inner = temple(c, +def.id.split('_')[1]);
+  else if (def.type === 'mine') inner = mine(c, b.level);
   else if (def.type === 'deco') inner = deco(c, def.id);
   return wrap(c, inner);
 }

@@ -4,7 +4,8 @@ import { ELEMENTS, elementBadge, ELEMENT_ORDER } from '../data/elements.js';
 import { dragonSVG } from '../art/dragon.js';
 import * as actions from '../actions.js';
 import * as eco from '../economy.js';
-import { movesFor } from '../battle.js';
+import { movesFor, masteryTier } from '../battle.js';
+import { starsHtml } from './battle.js';
 import { openModal, bindActions, tabs, cost, toast, ICON, confirmDialog, promptDialog, bar } from './ui.js';
 import { fmt, escapeHtml } from '../util.js';
 import { sfx } from '../audio.js';
@@ -50,7 +51,7 @@ export const dragonsPanel = {
         return `<button class="list-item tappable" data-action="dragon" data-id="${d.id}">
           <div class="thumb">${dragonSVG(d.species, eco.dragonStage(d.level), { size: 72 })}</div>
           <div class="info">
-            <div class="name">${escapeHtml(d.name)} <span class="muted">Lv ${d.level}</span></div>
+            <div class="name">${escapeHtml(d.name)} <span class="muted">Lv ${d.level}</span> ${starsHtml(d.stars)}</div>
             <div class="badges">${sp.elements.map((e) => elementBadge(e, 14)).join('')} <span class="rarity" style="color:${RARITY[sp.rarity].color}">${sp.name}</span></div>
             <div class="meta">${ICON.gold} ${fmt(eco.dragonGoldRate(d))}/min · ${hab ? `${ELEMENTS[hab.element].name} Habitat` : 'No home'}</div>
           </div>
@@ -109,6 +110,19 @@ export const dragonsPanel = {
           else { this.renderDragon(dragon, m); game.changed(); if (this.modal) this.renderTab(); }
         },
         move: () => this.chooseHabitat(dragon, m),
+        empower: async () => {
+          const costG = eco.empowerCost(dragon);
+          const ok = await confirmDialog('Empower', `Spend ${fmt(costG)} gold to give ${escapeHtml(dragon.name)} a star? Each star adds +8% stats and +10% gold.`, 'Empower');
+          if (!ok) return;
+          const r = actions.empowerDragon(st, dragon);
+          if (!r.ok) { sfx.play('error'); toast(r.error, 'bad'); return; }
+          sfx.play('levelup');
+          toast(`${escapeHtml(dragon.name)} is now ${r.stars}★!`, 'good');
+          game.levelUp(r.xpEvents);
+          game.changed();
+          this.renderDragon(dragon, m);
+          if (this.modal) this.renderTab();
+        },
         sell: async () => {
           const value = eco.sellValueDragon(dragon);
           const ok = await confirmDialog('Sell dragon', `Sell ${escapeHtml(dragon.name)} for ${fmt(value)} gold? This cannot be undone.`, 'Sell', true);
@@ -133,16 +147,20 @@ export const dragonsPanel = {
   renderDragon(dragon, modal) {
     const st = game.state;
     const sp = DRAGONS[dragon.species];
-    const stats = eco.dragonStats(dragon.species, dragon.level);
+    const stats = eco.dragonStats(dragon.species, dragon.level, dragon.stars || 0);
     const cap = eco.levelCap(st);
     const foodCost = eco.foodForLevel(dragon.level);
     const hab = st.buildings.find((b) => b.id === dragon.habitat);
-    const moves = movesFor(dragon.species);
+    const moves = movesFor(dragon.species, dragon.level);
+    const tier = masteryTier(dragon.level);
+    const stars = dragon.stars || 0;
+    const empowerG = eco.empowerCost(dragon);
+    const canEmpower = dragon.level >= eco.EMPOWER_MIN_LEVEL && stars < eco.MAX_STARS;
     modal.setTitle(`${escapeHtml(dragon.name)} <button class="icon-btn tiny" data-action="rename" aria-label="Rename">✎</button>`);
     modal.body.innerHTML = `
       <div class="dragon-hero">${dragonSVG(dragon.species, eco.dragonStage(dragon.level), { size: 170 })}</div>
       <div class="badges center">${sp.elements.map((e) => elementBadge(e, 18)).join('')} <span class="rarity" style="color:${RARITY[sp.rarity].color}">${sp.name} · ${RARITY[sp.rarity].name}</span></div>
-      <div class="level-row"><b>Level ${dragon.level}</b> <span class="muted">/ ${cap}</span> · <span class="muted">${eco.dragonStage(dragon.level)}</span></div>
+      <div class="level-row"><b>Level ${dragon.level}</b> <span class="muted">/ ${cap}</span> · <span class="muted">${eco.dragonStage(dragon.level)}</span> ${stars ? `· <span class="stars">${'★'.repeat(stars)}</span>` : ''}</div>
       <div class="stat-grid"><div>HP <b>${stats.hp}</b></div><div>ATK <b>${stats.atk}</b></div><div>DEF <b>${stats.def}</b></div><div>SPD <b>${stats.spd}</b></div><div>Gold <b>${fmt(eco.dragonGoldRate(dragon))}/min</b></div><div>Home <b>${hab ? ELEMENTS[hab.element].name : '—'}</b></div></div>
       <div class="card">
         <div class="row between"><b>Feed</b> <span class="muted">${dragon.level >= cap ? 'Level cap reached' : `Next level: ${cost({ food: foodCost }, st)}`}</span></div>
@@ -152,7 +170,12 @@ export const dragonsPanel = {
         ${dragon.level >= cap && cap < 30 ? '<p class="hint">Build a Temple to raise the level cap.</p>' : ''}
         ${dragon.level < 3 ? '<p class="hint">Dragons can breed from level 3.</p>' : ''}
       </div>
-      <div class="card"><b>Battle moves</b><div class="moves-list">${moves.map((mv) => `<div class="move-chip">${mv.el ? elementBadge(mv.el, 14) : '<span class="elbadge phys">•</span>'} ${mv.name} <span class="muted">${mv.power}</span></div>`).join('')}</div></div>
+      <div class="card">
+        <div class="row between"><b>Empower ${stars ? `<span class="stars">${'★'.repeat(stars)}${'☆'.repeat(eco.MAX_STARS - stars)}</span>` : ''}</b><span class="muted">${stars >= eco.MAX_STARS ? 'Max stars' : `Next star: ${cost({ gold: empowerG }, st)}`}</span></div>
+        <p class="hint">${dragon.level < eco.EMPOWER_MIN_LEVEL ? `Reach level ${eco.EMPOWER_MIN_LEVEL} to empower. Each star adds +8% stats and +10% gold.` : 'Each star adds +8% stats and +10% gold income.'}</p>
+        ${stars < eco.MAX_STARS ? `<button class="btn wide" data-action="empower" ${canEmpower && st.player.gold >= empowerG ? '' : 'disabled'}>★ Empower (${fmt(empowerG)})</button>` : ''}
+      </div>
+      <div class="card"><div class="row between"><b>Battle moves</b><span class="muted">${tier ? `Mastery ${'I'.repeat(Math.min(3, tier))}${tier === 4 ? 'V' : ''} · +${tier * 10} power` : 'Mastery at level 10'}</span></div><div class="moves-list">${moves.map((mv) => `<div class="move-chip">${mv.el ? elementBadge(mv.el, 14) : '<span class="elbadge phys">•</span>'} ${mv.name} <span class="muted">${mv.power}</span></div>`).join('')}</div></div>
       <p class="hint">${sp.desc}</p>
       <div class="row gap wrap">
         <button class="btn ghost" data-action="goto">Find on island</button>

@@ -1,6 +1,10 @@
 // Pure formulas: no state mutation here.
 import { DRAGONS, RARITY, ELEMENT_BIAS } from './data/dragons.js';
 import { BUILDINGS } from './data/buildings.js';
+import { currentEvent } from './data/events.js';
+
+export const MAX_STARS = 5;
+export const EMPOWER_MIN_LEVEL = 20;
 
 export function xpForLevel(level) {
   return Math.round(55 * Math.pow(level, 2));
@@ -10,7 +14,7 @@ export function levelUpGems(level) {
   return 2 + Math.floor(level / 3);
 }
 
-export function dragonStats(speciesId, level) {
+export function dragonStats(speciesId, level, stars = 0) {
   const sp = DRAGONS[speciesId];
   const r = RARITY[sp.rarity];
   let hp = r.hp, atk = r.atk, def = r.def, spd = r.spd;
@@ -21,7 +25,7 @@ export function dragonStats(speciesId, level) {
     def *= 1 + (b.def || 0);
     spd *= 1 + (b.spd || 0);
   }
-  const mult = 1 + 0.16 * (level - 1);
+  const mult = (1 + 0.16 * (level - 1)) * (1 + 0.08 * (stars || 0));
   return {
     hp: Math.round(hp * mult),
     atk: Math.round(atk * mult),
@@ -32,7 +36,7 @@ export function dragonStats(speciesId, level) {
 
 // Gold per minute for a single dragon.
 export function dragonGoldRate(dragon) {
-  return DRAGONS[dragon.species].goldRate * dragon.level;
+  return Math.round(DRAGONS[dragon.species].goldRate * dragon.level * (1 + 0.1 * (dragon.stars || 0)));
 }
 
 export function habitatRate(state, b) {
@@ -41,7 +45,28 @@ export function habitatRate(state, b) {
     const d = state.dragons.find((x) => x.id === id);
     if (d) rate += dragonGoldRate(d);
   }
+  const ev = currentEvent();
+  if (ev.element === b.element) rate *= ev.goldMult;
   return rate;
+}
+
+// Shop price after the weekly event discount.
+export function dragonPrice(sp) {
+  if (!sp.cost) return null;
+  const ev = currentEvent();
+  if (!sp.elements.includes(ev.element)) return sp.cost;
+  const c = {};
+  if (sp.cost.gold) c.gold = Math.round(sp.cost.gold * (1 - ev.shopDiscount));
+  if (sp.cost.gems) c.gems = Math.max(1, Math.round(sp.cost.gems * (1 - ev.shopDiscount)));
+  return c;
+}
+
+export function empowerCost(dragon) {
+  return 50000 * Math.pow(2, dragon.stars || 0);
+}
+
+export function mineGemsPerHour(b) {
+  return 1 / BUILDINGS[b.def].gemHours[b.level - 1];
 }
 
 export function habitatCapacity(b) {

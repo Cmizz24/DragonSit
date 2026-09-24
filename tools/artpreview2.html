@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{background:#2b3a4a;font-family:sans-serif;color:#fff;margin:0;padding:8px}.grid{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end}.c{width:150px;text-align:center;font-size:11px}.c svg{width:140px;height:140px}.b .c svg{width:auto;height:auto;max-width:200px}</style></head><body>
+<div id="grid" class="grid"></div>
+<div id="bgrid" class="grid b"></div>
+<script type="module">
+import { dragonSVG } from '../src/art/dragon.js';
+import { buildingSVG } from '../src/art/buildings.js';
+import { DRAGON_LIST } from '../src/data/dragons.js';
+const g = document.getElementById('grid');
+for (const d of DRAGON_LIST.slice(55)) g.innerHTML += `<div class="c">${dragonSVG(d.id,'adult',{size:140})}<div>${d.name} (${d.elements.join('+')})</div></div>`;
+const bg = document.getElementById('bgrid');
+for (const id of ['mine','temple_5','deco_bonfire','deco_pond','deco_windmill','deco_arch','deco_totem','deco_obelisk']) bg.innerHTML += `<div class="c">${buildingSVG({def:id,level:id==='mine'?3:1})}<div>${id}</div></div>`;
+window.__done = true;
+</script></body></html>

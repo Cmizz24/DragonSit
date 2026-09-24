@@ -7,6 +7,8 @@ import { breedPanel } from './ui/breed.js';
 import { battlePanel } from './ui/battle.js';
 import { questsPanel } from './ui/quests.js';
 import { settingsPanel } from './ui/settings.js';
+import { friendsPanel } from './ui/friends.js';
+import { cloudEnabled, publishCard } from './cloud.js';
 import { openModal, bindActions, toast, ICON, closeAllModals, modalCount, infoDialog, setModalStackListener } from './ui/ui.js';
 import * as actions from './actions.js';
 import { BUILDINGS, BUILDING_LIST } from './data/buildings.js';
@@ -105,7 +107,7 @@ function showWelcome() {
 
 function init() {
   const canvas = document.getElementById('island');
-  game.panels = { shop: shopPanel, dragons: dragonsPanel, building: buildingPanel, breed: breedPanel, battle: battlePanel, quests: questsPanel, settings: settingsPanel, placement: placementBar };
+  game.panels = { shop: shopPanel, dragons: dragonsPanel, building: buildingPanel, breed: breedPanel, battle: battlePanel, quests: questsPanel, settings: settingsPanel, friends: friendsPanel, placement: placementBar };
   game.init(canvas);
   sfx.setEnabled(game.state.settings.sound);
   initHud();
@@ -123,8 +125,22 @@ function init() {
       else if (which === 'breed') breedPanel.open();
       else if (which === 'battle') battlePanel.open('campaign');
       else if (which === 'quests') questsPanel.open();
+      else if (which === 'friends') friendsPanel.open();
     });
   });
+
+  // Cloud: publish the trainer card on load, after changes (throttled) and every 10 minutes.
+  let lastPublish = 0;
+  const cloudSync = (force = false) => {
+    const st = game.state;
+    if (!st || !cloudEnabled(st) || !navigator.onLine) return;
+    if (!force && Date.now() - lastPublish < 60000) return;
+    lastPublish = Date.now();
+    publishCard(st).catch(() => {});
+  };
+  setTimeout(() => cloudSync(true), 3000);
+  setInterval(() => cloudSync(true), 10 * 60 * 1000);
+  game.on((evt) => { if (evt === 'change') cloudSync(false); });
   document.getElementById('btn-settings').addEventListener('click', () => { sfx.play('tap'); settingsPanel.open(); });
   document.getElementById('btn-center').addEventListener('click', () => { sfx.play('tap'); game.island.centerOnZone0(); });
 
@@ -137,7 +153,7 @@ function init() {
   game.on((evt) => {
     if (evt !== 'change' && evt !== 'tick') return;
     const c = claimableQuests(game.state);
-    if (c > lastClaimable) toast('Quest complete! Tap your level badge to claim.', 'good', 2600);
+    if (c > lastClaimable) toast('Reward ready! Tap your level badge to claim.', 'good', 2600);
     lastClaimable = c;
   });
 

@@ -1,6 +1,9 @@
 import { game } from '../game.js';
 import { exportSave, importSave, wipeSave, saveState } from '../state.js';
-import { openModal, bindActions, toast, confirmDialog, infoDialog } from './ui.js';
+import { openModal, bindActions, toast, confirmDialog, infoDialog, promptDialog } from './ui.js';
+import { cloudEnabled, fetchLeaderboard, publishCard } from '../cloud.js';
+import { escapeHtml } from '../util.js';
+import * as actions from '../actions.js';
 import { sfx } from '../audio.js';
 
 export const settingsPanel = {
@@ -10,7 +13,17 @@ export const settingsPanel = {
     openModal({
       title: 'Settings',
       html: `<div class="card">
+          <div class="row between"><span>Trainer name: <b>${escapeHtml(st.player.name)}</b></span><button class="btn small" data-action="rename">Rename</button></div>
+          <div class="meta">Your ID: <b class="mono">${st.player.id}</b></div>
+        </div>
+        <div class="card">
           <label class="row between"><span>Sound effects</span><input type="checkbox" id="opt-sound" ${st.settings.sound ? 'checked' : ''}></label>
+        </div>
+        <div class="card">
+          <b>Cloud sync (optional)</b>
+          <p class="hint">Paste a Firebase Realtime Database URL to share a live leaderboard with friends and update their cards automatically. See the README for the 5-minute setup. Everyone must use the same URL.</p>
+          <input class="input" id="opt-cloud" placeholder="https://your-project-default-rtdb.firebaseio.com" value="${escapeHtml(st.settings.cloudUrl || '')}">
+          <div class="row gap"><button class="btn primary" data-action="cloudsave">Save & test</button>${cloudEnabled(st) ? '<span class="tag good">Enabled</span>' : ''}</div>
         </div>
         <div class="card">
           <b>Save data</b>
@@ -27,6 +40,29 @@ export const settingsPanel = {
           game.save();
         });
         bindActions(m.body, {
+          rename: async () => {
+            const name = await promptDialog('Trainer name', st.player.name, 'Name');
+            if (name == null) return;
+            const r = actions.renamePlayer(st, name);
+            if (!r.ok) { toast(r.error, 'bad'); return; }
+            game.changed();
+            m.close();
+            settingsPanel.open();
+          },
+          cloudsave: async () => {
+            const url = m.body.querySelector('#opt-cloud').value.trim();
+            st.settings.cloudUrl = url;
+            game.save();
+            if (!url) { toast('Cloud sync turned off'); return; }
+            toast('Testing connection…');
+            try {
+              await publishCard(st);
+              const board = await fetchLeaderboard(st, 5);
+              toast(`Connected! ${board.length} player${board.length === 1 ? '' : 's'} online.`, 'good', 3000);
+            } catch (err) {
+              toast('Could not connect. Check the URL and database rules.', 'bad', 3500);
+            }
+          },
           export: () => {
             game.save();
             const code = exportSave(st);

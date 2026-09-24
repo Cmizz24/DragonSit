@@ -1,11 +1,12 @@
 // Service worker: caches the app shell so DragonSit works offline once visited.
-const CACHE = 'dragonsit-v1';
+const CACHE = 'dragonsit-v2';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/style.css',
   './src/main.js', './src/game.js', './src/state.js', './src/actions.js', './src/economy.js', './src/breeding.js', './src/battle.js', './src/island.js', './src/audio.js', './src/util.js',
-  './src/data/elements.js', './src/data/dragons.js', './src/data/buildings.js', './src/data/quests.js', './src/data/campaign.js',
+  './src/social.js', './src/cloud.js', './src/config.js',
+  './src/data/elements.js', './src/data/dragons.js', './src/data/buildings.js', './src/data/quests.js', './src/data/campaign.js', './src/data/events.js', './src/data/achievements.js', './src/data/missions.js',
   './src/art/dragon.js', './src/art/buildings.js', './src/art/cache.js',
-  './src/ui/ui.js', './src/ui/hud.js', './src/ui/shop.js', './src/ui/dragons.js', './src/ui/building.js', './src/ui/breed.js', './src/ui/battle.js', './src/ui/quests.js', './src/ui/settings.js',
+  './src/ui/ui.js', './src/ui/hud.js', './src/ui/shop.js', './src/ui/dragons.js', './src/ui/building.js', './src/ui/breed.js', './src/ui/battle.js', './src/ui/quests.js', './src/ui/settings.js', './src/ui/friends.js',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
 ];
 

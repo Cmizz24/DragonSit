@@ -21,6 +21,7 @@ export function dragonSVG(speciesId, stage = 'adult', opts = {}) {
   const E1 = ELEMENTS[sp.elements[0]];
   const E2 = sp.elements[1] ? ELEMENTS[sp.elements[1]] : null;
   const E3 = sp.elements[2] ? ELEMENTS[sp.elements[2]] : null;
+  const E4 = sp.elements[3] ? ELEMENTS[sp.elements[3]] : null;
   const body = E1.color;
   const belly = E1.light;
   const dark = E1.dark;
@@ -29,7 +30,8 @@ export function dragonSVG(speciesId, stage = 'adult', opts = {}) {
   const eye = E1.eye;
   const look = sp.look;
   const s = stage === 'baby' ? 0 : stage === 'young' ? 1 : 2;
-  const legendary = sp.rarity === 'legendary';
+  const legendary = sp.rarity === 'legendary' || sp.rarity === 'mythic';
+  const mythic = sp.rarity === 'mythic';
   const uid = `g${speciesId}${s}`;
   const parts = [];
 
@@ -48,7 +50,14 @@ export function dragonSVG(speciesId, stage = 'adult', opts = {}) {
   const wingScale = [0.35, 0.72, 1][s];
   const outline = `stroke="${dark}" stroke-width="2.5" stroke-linejoin="round"`;
 
-  if (legendary) {
+  if (mythic) {
+    parts.push(`<defs><radialGradient id="${uid}aura"><stop offset="0" stop-color="#ffffff" stop-opacity=".95"/><stop offset=".45" stop-color="${E2 ? E2.color : E1.light}" stop-opacity=".55"/><stop offset="1" stop-color="${E1.color}" stop-opacity="0"/></radialGradient></defs>`);
+    parts.push(`<circle cx="100" cy="115" r="98" fill="url(#${uid}aura)"/>`);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      parts.push(`<path d="M${(100 + Math.cos(a) * 88).toFixed(1)} ${(115 + Math.sin(a) * 88).toFixed(1)} l 4 -6 l 4 6 l -4 6 Z" fill="#fff" opacity=".9"/>`);
+    }
+  } else if (legendary) {
     parts.push(`<defs><radialGradient id="${uid}aura"><stop offset="0" stop-color="${E1.light}" stop-opacity=".9"/><stop offset="1" stop-color="${E1.color}" stop-opacity="0"/></radialGradient></defs>`);
     parts.push(`<circle cx="100" cy="115" r="92" fill="url(#${uid}aura)"/>`);
   } else if (sp.rarity === 'epic') {
@@ -119,9 +128,10 @@ export function dragonSVG(speciesId, stage = 'adult', opts = {}) {
     parts.push(`<circle cx="${bodyCx + 14}" cy="${bodyCy - bodyRy + 12}" r="7" fill="${ec.dark}"/><circle cx="${bodyCx + 30}" cy="${bodyCy - bodyRy + 24}" r="5" fill="${ec.dark}"/><circle cx="${bodyCx + 2}" cy="${bodyCy - bodyRy + 6}" r="4" fill="${ec.dark}"/>`);
   }
   if (E3) {
-    for (const [dx, dy, r] of [[10, -10, 6], [26, 4, 5], [16, 12, 4], [-2, -18, 4]]) {
-      parts.push(`<circle cx="${bodyCx + dx}" cy="${bodyCy + dy}" r="${r}" fill="${E3.color}" opacity=".85"/>`);
-    }
+    [[10, -10, 6], [26, 4, 5], [16, 12, 4], [-2, -18, 4]].forEach(([dx, dy, r], i) => {
+      const col = E4 && i % 2 === 1 ? E4.color : E3.color;
+      parts.push(`<circle cx="${bodyCx + dx}" cy="${bodyCy + dy}" r="${r}" fill="${col}" opacity=".85"/>`);
+    });
   } else if (E2 && !['metal', 'earth'].includes(E2.id)) {
     for (const [dx, dy, r] of [[14, -12, 5], [28, 2, 4], [20, 14, 3.5]]) {
       parts.push(`<circle cx="${bodyCx + dx}" cy="${bodyCy + dy}" r="${r}" fill="${E2.color}" opacity=".8"/>`);
