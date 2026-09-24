@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{background:#22303f;font-family:sans-serif;color:#fff;margin:0;padding:8px}.grid{display:flex;flex-wrap:wrap;gap:6px}.c{width:220px;text-align:center;font-size:11px}.c svg{width:210px;height:210px}.row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}.row .c{width:180px}.row .c svg{width:170px;height:170px}</style></head><body>
+<div id="stages" class="row"></div>
+<div id="grid" class="grid"></div>
+<script type="module">
+import { dragonSVG, eggSVG } from '../src/art/dragon.js';
+const st = document.getElementById('stages');
+for (const s of ['baby','young','adult']) st.innerHTML += `<div class="c">${dragonSVG('flame', s, {size:170})}<div>flame ${s}</div></div>`;
+st.innerHTML += `<div class="c">${dragonSVG('sea','adult',{size:170,facing:'right'})}<div>sea right</div></div>`;
+for (const id of ['flame','sea','volcano','legend']) st.innerHTML += `<div class="c">${eggSVG(id,{size:80})}</div>`;
+const g = document.getElementById('grid');
+for (const id of ['terra','sprout','volt','frost','iron','shade','glow','storm','phoenix','kraken','titan','elder','mirror','chaos','primordial','cosmos']) g.innerHTML += `<div class="c">${dragonSVG(id,'adult',{size:210})}<div>${id}</div></div>`;
+window.__done = true;
+</script></body></html>

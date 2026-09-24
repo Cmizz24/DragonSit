@@ -157,10 +157,11 @@ for (const [id, name, elements, rarity, cost, desc, look] of raw) {
     xp: r.xp,
     look: {
       horn: (look && look.horn) ?? h % 4,
-      tail: (look && look.tail) ?? (h >> 2) % 4,
-      wing: (look && look.wing) ?? (h >> 4) % 3,
-      spikes: (h >> 6) % 3,
-      snout: (h >> 8) % 2,
+      tail: (look && look.tail) ?? (h >>> 2) % 4,
+      wing: (look && look.wing) ?? (h >>> 4) % 3,
+      spikes: (h >>> 6) % 3,
+      snout: (h >>> 8) % 2,
+      body: (look && look.body) ?? (h >>> 10) % 3,
     },
   };
   DRAGONS[id] = species;

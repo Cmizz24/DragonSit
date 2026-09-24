@@ -12,10 +12,23 @@ const HALF_W = TILE_W / 2;
 const HALF_H = TILE_H / 2;
 
 const THEMES = {
-  grass: { tileA: '#6fbf5a', tileB: '#66b552', edge: '#c9b46a', cliffL: '#8b6b3e', cliffR: '#6f5430', waterTop: '#2a7fbd', waterBottom: '#155a91', lockedA: 'rgba(20,60,90,0.35)', lockedB: 'rgba(20,60,90,0.28)', wave: 'rgba(255,255,255,0.08)' },
-  sky: { tileA: '#93d68c', tileB: '#89cd82', edge: '#f1ecd8', cliffL: '#c4d3e4', cliffR: '#a3b4c9', waterTop: '#a7dbff', waterBottom: '#4d9be0', lockedA: 'rgba(255,255,255,0.30)', lockedB: 'rgba(255,255,255,0.22)', wave: 'rgba(255,255,255,0.25)' },
-  ember: { tileA: '#5c4b45', tileB: '#544441', edge: '#7c5a3c', cliffL: '#3b2a26', cliffR: '#2a1c1a', waterTop: '#d0521f', waterBottom: '#5a1a0a', lockedA: 'rgba(40,10,5,0.45)', lockedB: 'rgba(40,10,5,0.38)', wave: 'rgba(255,200,120,0.18)' },
+  grass: { tileA: '#74c25e', tileB: '#5fae4c', edge: '#d2bd75', cliffL: '#9a7647', cliffR: '#7a5a34', waterTop: '#2f8ccb', waterBottom: '#12508a', shallow: 'rgba(120,210,235,0.35)', lockedA: 'rgba(20,60,90,0.35)', lockedB: 'rgba(20,60,90,0.28)', wave: 'rgba(255,255,255,0.09)', tuft: '#3f8f2f', pebble: '#a9a17f' },
+  sky: { tileA: '#98da90', tileB: '#82c97a', edge: '#f3eedc', cliffL: '#d5e2ef', cliffR: '#aebfd2', waterTop: '#b4e1ff', waterBottom: '#4d9be0', shallow: 'rgba(255,255,255,0.35)', lockedA: 'rgba(255,255,255,0.30)', lockedB: 'rgba(255,255,255,0.22)', wave: 'rgba(255,255,255,0.28)', tuft: '#4fa54a', pebble: '#ffffff' },
+  ember: { tileA: '#65524b', tileB: '#4f403c', edge: '#8a6440', cliffL: '#4a3630', cliffR: '#2e201c', waterTop: '#e0602a', waterBottom: '#5a1a0a', shallow: 'rgba(255,170,60,0.35)', lockedA: 'rgba(40,10,5,0.45)', lockedB: 'rgba(40,10,5,0.38)', wave: 'rgba(255,200,120,0.2)', tuft: null, pebble: '#ff8a50' },
 };
+
+function shadeHex(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.max(0, (n >> 16) + amt));
+  const g = Math.min(255, Math.max(0, ((n >> 8) & 255) + amt));
+  const b = Math.min(255, Math.max(0, (n & 255) + amt));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+function mixHex(a, b, t) {
+  const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16);
+  const ch = (sh) => Math.round(((A >> sh) & 255) + (((B >> sh) & 255) - ((A >> sh) & 255)) * t);
+  return `#${((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0')}`;
+}
 const DRAGON_SLOTS = [[0.9, 2.0], [2.1, 1.1], [1.1, 0.9], [2.2, 2.2]];
 
 const ICONS = {
@@ -351,51 +364,90 @@ export class Island {
     g.translate(-minX + pad, -minY + pad);
     this.groundOrigin = [minX - pad, minY - pad];
     const unlocked = (x, y) => cellUnlocked(this.state, x, y, this.isle);
-    // cliff sides under unlocked tiles that border water on the bottom edges
+    const tilePath = (tx, ty) => {
+      g.beginPath();
+      g.moveTo(tx, ty);
+      g.lineTo(tx + HALF_W, ty + HALF_H);
+      g.lineTo(tx, ty + TILE_H);
+      g.lineTo(tx - HALF_W, ty + HALF_H);
+      g.closePath();
+    };
+    let seed = 12345 + this.isle * 77;
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    // shallow water ring around unlocked land
+    for (let gy = -1; gy <= ISLAND_SIZE; gy++) {
+      for (let gx = -1; gx <= ISLAND_SIZE; gx++) {
+        if (unlocked(gx, gy)) continue;
+        const near = unlocked(gx + 1, gy) || unlocked(gx - 1, gy) || unlocked(gx, gy + 1) || unlocked(gx, gy - 1) || unlocked(gx + 1, gy + 1) || unlocked(gx - 1, gy - 1) || unlocked(gx + 1, gy - 1) || unlocked(gx - 1, gy + 1);
+        if (!near) continue;
+        const [tx, ty] = this.gridToWorld(gx, gy);
+        tilePath(tx, ty + 14);
+        g.fillStyle = theme.shallow;
+        g.fill();
+      }
+    }
+    // cliff sides under unlocked tiles that border water on the bottom edges, with strata
     for (let gy = 0; gy < ISLAND_SIZE; gy++) {
       for (let gx = 0; gx < ISLAND_SIZE; gx++) {
         if (!unlocked(gx, gy)) continue;
         const [tx, ty] = this.gridToWorld(gx, gy);
-        const depth = 22;
-        if (!unlocked(gx, gy + 1)) {
-          g.fillStyle = theme.cliffL;
+        const depth = 26;
+        const face = (pts, base) => {
+          const grad = g.createLinearGradient(0, pts[0][1], 0, pts[0][1] + depth);
+          grad.addColorStop(0, base);
+          grad.addColorStop(0.35, base);
+          grad.addColorStop(1, shadeHex(base, -45));
+          g.fillStyle = grad;
           g.beginPath();
-          g.moveTo(tx - HALF_W, ty + HALF_H);
-          g.lineTo(tx, ty + TILE_H);
-          g.lineTo(tx, ty + TILE_H + depth);
-          g.lineTo(tx - HALF_W, ty + HALF_H + depth);
+          pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
           g.closePath();
           g.fill();
-        }
-        if (!unlocked(gx + 1, gy)) {
-          g.fillStyle = theme.cliffR;
+          g.strokeStyle = 'rgba(0,0,0,0.18)';
+          g.lineWidth = 1;
           g.beginPath();
-          g.moveTo(tx, ty + TILE_H);
-          g.lineTo(tx + HALF_W, ty + HALF_H);
-          g.lineTo(tx + HALF_W, ty + HALF_H + depth);
-          g.lineTo(tx, ty + TILE_H + depth);
-          g.closePath();
-          g.fill();
-        }
+          g.moveTo(pts[0][0], pts[0][1] + 8);
+          g.lineTo(pts[1][0], pts[1][1] + 8);
+          g.moveTo(pts[0][0], pts[0][1] + 17);
+          g.lineTo(pts[1][0], pts[1][1] + 17);
+          g.stroke();
+        };
+        if (!unlocked(gx, gy + 1)) face([[tx - HALF_W, ty + HALF_H], [tx, ty + TILE_H], [tx, ty + TILE_H + depth], [tx - HALF_W, ty + HALF_H + depth]], theme.cliffL);
+        if (!unlocked(gx + 1, gy)) face([[tx, ty + TILE_H], [tx + HALF_W, ty + HALF_H], [tx + HALF_W, ty + HALF_H + depth], [tx, ty + TILE_H + depth]], theme.cliffR);
       }
     }
+    // ground tiles
     for (let gy = 0; gy < ISLAND_SIZE; gy++) {
       for (let gx = 0; gx < ISLAND_SIZE; gx++) {
         const [tx, ty] = this.gridToWorld(gx, gy);
         const isUnlocked = unlocked(gx, gy);
-        g.beginPath();
-        g.moveTo(tx, ty);
-        g.lineTo(tx + HALF_W, ty + HALF_H);
-        g.lineTo(tx, ty + TILE_H);
-        g.lineTo(tx - HALF_W, ty + HALF_H);
-        g.closePath();
+        tilePath(tx, ty);
         if (isUnlocked) {
           const edge = !unlocked(gx, gy + 1) || !unlocked(gx + 1, gy) || !unlocked(gx - 1, gy) || !unlocked(gx, gy - 1);
-          g.fillStyle = edge ? theme.edge : (gx + gy) % 2 === 0 ? theme.tileA : theme.tileB;
+          const k = ((gx * 31 + gy * 17) % 7) / 7;
+          g.fillStyle = edge ? theme.edge : mixHex(theme.tileA, theme.tileB, k);
           g.fill();
-          g.strokeStyle = 'rgba(0,0,0,0.06)';
+          g.strokeStyle = 'rgba(0,0,0,0.05)';
           g.lineWidth = 1;
           g.stroke();
+          if (!edge && rnd() < 0.5) {
+            // grass tufts / pebbles
+            const px = tx + (rnd() - 0.5) * 34, py = ty + 8 + rnd() * 16;
+            if (theme.tuft && rnd() < 0.8) {
+              g.strokeStyle = theme.tuft;
+              g.lineWidth = 1.4;
+              g.lineCap = 'round';
+              g.beginPath();
+              g.moveTo(px, py); g.lineTo(px - 3, py - 6);
+              g.moveTo(px, py); g.lineTo(px + 1, py - 7);
+              g.moveTo(px, py); g.lineTo(px + 4, py - 5);
+              g.stroke();
+            } else {
+              g.fillStyle = theme.pebble;
+              g.beginPath();
+              g.ellipse(px, py, 2.5, 1.5, 0, 0, Math.PI * 2);
+              g.fill();
+            }
+          }
         } else {
           g.fillStyle = (gx + gy) % 2 === 0 ? theme.lockedA : theme.lockedB;
           g.fill();
@@ -405,6 +457,14 @@ export class Island {
         }
       }
     }
+    // soft vignette of light from the top-left over the whole island
+    const [cxw, cyw] = this.gridToWorld(ISLAND_SIZE / 2, ISLAND_SIZE / 2);
+    const lightGrad = g.createRadialGradient(cxw - 200, cyw - 200, 50, cxw, cyw, 900);
+    lightGrad.addColorStop(0, 'rgba(255,255,230,0.14)');
+    lightGrad.addColorStop(0.6, 'rgba(255,255,255,0)');
+    lightGrad.addColorStop(1, 'rgba(0,0,40,0.16)');
+    g.fillStyle = lightGrad;
+    for (let gy = 0; gy < ISLAND_SIZE; gy++) for (let gx = 0; gx < ISLAND_SIZE; gx++) if (unlocked(gx, gy)) { const [tx, ty] = this.gridToWorld(gx, gy); tilePath(tx, ty); g.fill(); }
     this.groundCanvas = cv;
   }
 
@@ -499,6 +559,14 @@ export class Island {
       if (this.placement && this.placement.building && this.placement.building.id === b.id) continue;
       const img = this.buildingImage(b);
       const r = this.buildingRect(b);
+      {
+        const [sx] = this.gridToWorld(b.x + b.size / 2, b.y + b.size / 2);
+        const [, sy] = this.gridToWorld(b.x + b.size / 2, b.y + b.size / 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.beginPath();
+        ctx.ellipse(sx + 6, sy + 6, b.size * 34, b.size * 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       if (imageReady(img)) ctx.drawImage(img, r.x, r.y, r.w, r.h);
       if (b.type === 'habitat') this.drawDragons(ctx, b, t);
       this.drawIndicator(ctx, b, r, bob);
