@@ -1,7 +1,7 @@
 import { game } from '../game.js';
 import { DRAGONS } from '../data/dragons.js';
 import { leagueFor } from '../data/campaign.js';
-import { dragonSVG } from '../art/dragon.js';
+import { dragonImgHtml } from '../art/sprites.js';
 import * as actions from '../actions.js';
 import * as eco from '../economy.js';
 import { myCard, encodeCard } from '../social.js';
@@ -112,7 +112,7 @@ export const friendsPanel = {
       <div class="card me-card">
         <div class="row between"><div><b>${escapeHtml(me.name)}</b> <button class="icon-btn tiny" data-action="rename" aria-label="Rename">✎</button><div class="meta">ID <b class="mono">${me.id}</b> · Lv ${me.level} · ${league.name} League</div></div><button class="link" data-action="info">How it works</button></div>
         <div class="stat-grid four"><div>🏆 <b>${me.trophies}</b></div><div>Tower <b>${me.tower}</b></div><div>Stages <b>${me.campaign}</b></div><div>Species <b>${me.discovered}</b></div></div>
-        <div class="team-preview">${me.team.map((t) => `<span class="mini">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 40 })}<i>${t.level}</i></span>`).join('')}<span class="muted small">your best team</span></div>
+        <div class="team-preview">${me.team.map((t) => `<span class="mini">${dragonImgHtml(t.species, eco.dragonStage(t.level), { size: 40 })}<i>${t.level}</i></span>`).join('')}<span class="muted small">your best team</span></div>
         <div class="row gap wrap"><button class="btn primary grow" data-action="share">Share my card</button><button class="btn grow" data-action="gift">${ICON.gem} Send today's gift</button></div>
       </div>
       <div class="card">
@@ -130,7 +130,7 @@ export const friendsPanel = {
         <div class="info">
           <div class="name">${escapeHtml(f.name)} ${f.me ? '<span class="tag">You</span>' : ''} <span class="muted">Lv ${f.level}</span></div>
           <div class="meta">🏆 ${f.trophies} · Tower ${f.tower} · Stage ${f.campaign}${f.heroic ? ` (H${f.heroic})` : ''} · ${f.discovered} species${f.me ? '' : ` · Record ${f.wins || 0}-${f.losses || 0}`}</div>
-          <div class="team-preview">${(f.team || []).map((t) => `<span class="mini">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 34 })}<i>${t.level}</i></span>`).join('')}${f.me ? '' : `<span class="muted small">${fmtAgo(f.updatedAt)}</span>`}</div>
+          <div class="team-preview">${(f.team || []).map((t) => `<span class="mini">${dragonImgHtml(t.species, eco.dragonStage(t.level), { size: 34 })}<i>${t.level}</i></span>`).join('')}${f.me ? '' : `<span class="muted small">${fmtAgo(f.updatedAt)}</span>`}</div>
         </div>
         ${f.me ? '' : `<div class="col gap"><button class="btn small primary" data-action="battle" data-id="${f.id}" ${(f.team || []).length ? '' : 'disabled'}>Battle</button><button class="btn small ghost" data-action="remove" data-id="${f.id}">Remove</button></div>`}
       </div>`).join('')}

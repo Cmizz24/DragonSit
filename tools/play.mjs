@@ -17,7 +17,7 @@ const server = createServer(async (req, res) => {
 });
 await new Promise((r) => server.listen(0, r));
 const port = server.address().port;
-const browser = await chromium.launch();
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const iphone = devices['iPhone 13'];
 const context = await browser.newContext({ ...iphone, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
 const page = await context.newPage();

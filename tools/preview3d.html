@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{background:#22303f;font-family:sans-serif;color:#fff;margin:0;padding:8px}.grid{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end}.c{text-align:center;font-size:11px}.c img{display:block}#status{color:#fc0}</style></head><body>
+<div id="status">loading…</div>
+<div id="grid" class="grid"></div>
+<div id="bgrid" class="grid"></div>
+<script type="module">
+import { initArt, dragonImgHtml, buildingImgHtml, art } from '../src/art/sprites.js';
+const status = document.getElementById('status');
+try {
+  const mode = await initArt();
+  status.textContent = 'art mode: ' + mode;
+  const g = document.getElementById('grid');
+  const list = [['flame','baby'],['flame','young'],['flame','adult'],['sea','adult'],['terra','adult'],['sprout','adult'],['volt','adult'],['frost','adult'],['iron','adult'],['shade','adult'],['glow','adult'],['volcano','adult'],['storm','adult'],['phoenix','adult'],['legend','adult'],['cosmos','adult']];
+  for (const [id, st] of list) g.innerHTML += `<div class="c">${dragonImgHtml(id, st, { size: 190, eager: true, facing: id === 'sea' ? 'right' : 'left' })}<div>${id} ${st}</div></div>`;
+  const bg = document.getElementById('bgrid');
+  for (const id of ['habitat_fire','habitat_water','habitat_nature','habitat_electric','habitat_ice','habitat_metal','habitat_dark','habitat_light','habitat_legend','farm','breeding','hatchery','mine','temple_1','deco_tree','deco_fountain','deco_statue','deco_bonfire','deco_windmill']) {
+    const extra = id === 'farm' ? { farmState: 'ready' } : id === 'breeding' ? { breedingActive: true } : id === 'hatchery' ? { eggs: [{ id: 'flame', elements: ['fire'] }, { id: 'sea', elements: ['water'] }] } : {};
+    bg.innerHTML += `<div class="c">${buildingImgHtml({ def: id, level: 1 }, extra, { eager: true })}<div>${id}</div></div>`;
+  }
+  window.__done = true;
+} catch (e) { status.textContent = 'ERR ' + e.message + '\n' + e.stack; window.__done = true; }
+</script></body></html>

@@ -1,7 +1,8 @@
 import { game } from '../game.js';
 import { DRAGON_LIST, DRAGONS, RARITY } from '../data/dragons.js';
 import { ELEMENTS, elementBadge, ELEMENT_ORDER } from '../data/elements.js';
-import { dragonSVG } from '../art/dragon.js';
+import { dragonImgHtml, art } from '../art/sprites.js';
+import { DragonViewer } from '../art/three/viewer.js';
 import * as actions from '../actions.js';
 import * as eco from '../economy.js';
 import { movesFor, masteryTier } from '../battle.js';
@@ -49,7 +50,7 @@ export const dragonsPanel = {
         const sp = DRAGONS[d.species];
         const hab = st.buildings.find((b) => b.id === d.habitat);
         return `<button class="list-item tappable" data-action="dragon" data-id="${d.id}">
-          <div class="thumb">${dragonSVG(d.species, eco.dragonStage(d.level), { size: 72 })}</div>
+          <div class="thumb">${dragonImgHtml(d.species, eco.dragonStage(d.level), { size: 72, stars: d.stars || 0 })}</div>
           <div class="info">
             <div class="name">${escapeHtml(d.name)} <span class="muted">Lv ${d.level}</span> ${starsHtml(d.stars)}</div>
             <div class="badges">${sp.elements.map((e) => elementBadge(e, 14)).join('')} <span class="rarity" style="color:${RARITY[sp.rarity].color}">${sp.name}</span></div>
@@ -66,7 +67,7 @@ export const dragonsPanel = {
       return `<h3 class="group-title" style="color:${RARITY[r].color}">${RARITY[r].name}</h3><div class="grid-book">${list.map((d) => {
         const known = st.discovered.includes(d.id);
         return `<button class="book-cell ${known ? '' : 'unknown'}" data-action="species" data-id="${d.id}">
-          <div class="thumb">${dragonSVG(d.id, 'adult', { size: 64 })}</div>
+          <div class="thumb">${dragonImgHtml(d.id, 'adult', { size: 64 })}</div>
           <div class="cell-name">${known ? d.name.replace(' Dragon', '') : '???'}</div>
           <div class="badges center">${d.elements.map((e) => elementBadge(e, 12)).join('')}</div>
         </button>`;
@@ -85,7 +86,7 @@ export const dragonsPanel = {
     openModal({
       title: known ? sp.name : 'Unknown dragon',
       cls: 'center',
-      html: `<div class="dragon-hero ${known ? '' : 'unknown'}">${dragonSVG(id, 'adult', { size: 160 })}</div>
+      html: `<div class="dragon-hero ${known ? '' : 'unknown'}">${dragonImgHtml(id, 'adult', { size: 160 })}</div>
         <div class="badges center">${sp.elements.map((e) => elementBadge(e, 18)).join('')} <span class="rarity" style="color:${RARITY[sp.rarity].color}">${RARITY[sp.rarity].name}</span></div>
         <p class="dialog-text">${known ? sp.desc : 'You have not discovered this dragon yet.'}</p>
         <p class="hint">${hint}</p>
@@ -100,6 +101,7 @@ export const dragonsPanel = {
     const modal = openModal({
       title: '',
       full: true,
+      onClose: () => { if (this.viewer) { this.viewer.dispose(); this.viewer = null; } },
       onMount: (m) => bindActions(m.body, {
         feed: () => this.feed(dragon, m),
         rename: async () => {
@@ -157,9 +159,11 @@ export const dragonsPanel = {
     const empowerG = eco.empowerCost(dragon);
     const canEmpower = dragon.level >= eco.EMPOWER_MIN_LEVEL && stars < eco.MAX_STARS;
     modal.setTitle(`${escapeHtml(dragon.name)} <button class="icon-btn tiny" data-action="rename" aria-label="Rename">✎</button>`);
+    if (this.viewer) { this.viewer.dispose(); this.viewer = null; }
     modal.body.innerHTML = `
-      <div class="dragon-hero">${dragonSVG(dragon.species, eco.dragonStage(dragon.level), { size: 170 })}</div>
+      <div class="dragon-hero ${art.mode === '3d' ? 'live' : ''}">${art.mode === '3d' ? '' : dragonImgHtml(dragon.species, eco.dragonStage(dragon.level), { size: 170 })}</div>
       <div class="badges center">${sp.elements.map((e) => elementBadge(e, 18)).join('')} <span class="rarity" style="color:${RARITY[sp.rarity].color}">${sp.name} · ${RARITY[sp.rarity].name}</span></div>
+      ${art.mode === '3d' ? '<p class="hint center-text">Drag to spin</p>' : ''}
       <div class="level-row"><b>Level ${dragon.level}</b> <span class="muted">/ ${cap}</span> · <span class="muted">${eco.dragonStage(dragon.level)}</span> ${stars ? `· <span class="stars">${'★'.repeat(stars)}</span>` : ''}</div>
       <div class="stat-grid"><div>HP <b>${stats.hp}</b></div><div>ATK <b>${stats.atk}</b></div><div>DEF <b>${stats.def}</b></div><div>SPD <b>${stats.spd}</b></div><div>Gold <b>${fmt(eco.dragonGoldRate(dragon))}/min</b></div><div>Home <b>${hab ? ELEMENTS[hab.element].name : '—'}</b></div></div>
       <div class="card">
@@ -182,6 +186,14 @@ export const dragonsPanel = {
         <button class="btn ghost" data-action="move">Move home</button>
         <button class="btn danger ghost" data-action="sell">Sell (${fmt(eco.sellValueDragon(dragon))})</button>
       </div>`;
+    if (art.mode === '3d') {
+      try {
+        this.viewer = new DragonViewer(modal.body.querySelector('.dragon-hero'), dragon.species, eco.dragonStage(dragon.level), { stars: dragon.stars || 0 });
+      } catch (err) {
+        console.warn('viewer failed', err);
+        modal.body.querySelector('.dragon-hero').innerHTML = dragonImgHtml(dragon.species, eco.dragonStage(dragon.level), { size: 170, eager: true });
+      }
+    }
   },
 
   feed(dragon, modal) {

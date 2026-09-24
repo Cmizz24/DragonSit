@@ -4,8 +4,7 @@ import { currentEvent } from '../data/events.js';
 import * as eco from '../economy.js';
 import { DRAGON_LIST, RARITY } from '../data/dragons.js';
 import { ELEMENTS, elementBadge } from '../data/elements.js';
-import { buildingSVG } from '../art/buildings.js';
-import { dragonSVG } from '../art/dragon.js';
+import { dragonImgHtml, buildingImgHtml } from '../art/sprites.js';
 import * as actions from '../actions.js';
 import { openModal, bindActions, tabs, cost, toast, ICON, confirmDialog, infoDialog } from './ui.js';
 import { fmt, fmtTime } from '../util.js';
@@ -70,7 +69,7 @@ export const shopPanel = {
         const price = eco.dragonPrice(d);
         const onSale = d.elements.includes(ev.element);
         return `<div class="list-item ${locked ? 'locked' : ''}">
-          <div class="thumb">${dragonSVG(d.id, 'young', { size: 72 })}</div>
+          <div class="thumb">${dragonImgHtml(d.id, 'young', { size: 72 })}</div>
           <div class="info">
             <div class="name">${d.name} <span class="rarity" style="color:${RARITY[d.rarity].color}">${RARITY[d.rarity].name}</span></div>
             <div class="badges">${d.elements.map((e) => elementBadge(e, 14)).join('')} ${owned ? '<span class="tag">Owned</span>' : ''} ${onSale ? '<span class="tag good">Sale</span>' : ''}</div>
@@ -116,7 +115,7 @@ export const shopPanel = {
       const built = d.max && actions.countBuildings(st, d.id) >= d.max;
       const extra = d.type === 'farm' ? { farmState: 'ready' } : {};
       return `<div class="list-item ${locked ? 'locked' : ''}">
-        <div class="thumb">${buildingSVG({ def: d.id, level: 1 }, extra)}</div>
+        <div class="thumb">${buildingImgHtml({ def: d.id, level: 1 }, extra)}</div>
         <div class="info">
           <div class="name">${d.name}</div>
           <div class="desc">${d.desc}</div>

@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{background:#22303f;font-family:sans-serif;color:#fff;margin:0;padding:8px}.grid{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-end}.c{text-align:center;font-size:11px}.c img{display:block}</style></head><body>
+<div id="status"></div><div id="grid" class="grid"></div>
+<script type="module">
+import { initArt, dragonImgHtml } from '../src/art/sprites.js';
+await initArt();
+const g = document.getElementById('grid');
+const list = [['flame','baby'],['flame','young'],['flame','adult'],['sea','adult'],['terra','adult'],['sprout','adult'],['volt','adult'],['frost','adult'],['iron','adult'],['shade','adult'],['glow','adult'],['volcano','adult'],['storm','adult'],['phoenix','adult'],['legend','adult'],['cosmos','adult'],['titan','adult'],['kraken','adult']];
+for (const [id, st] of list) g.innerHTML += `<div class="c">${dragonImgHtml(id, st, { size: 190, eager: true, facing: id === 'sea' ? 'right' : 'left' })}<div>${id} ${st}</div></div>`;
+window.__done = true;
+</script></body></html>

@@ -1,8 +1,8 @@
 // Isometric island renderer + touch input (pan, pinch-zoom, tap, build placement).
 import { ISLAND_SIZE, ZONES, ISLES, zoneAt, zoneCost, BUILDINGS } from './data/buildings.js';
 import { TILE_W, TILE_H, TOP, buildingSVG, buildingKey, imageSize, lockSVG } from './art/buildings.js';
-import { dragonSVG } from './art/dragon.js';
 import { getImage, imageReady, setImageLoadCallback } from './art/cache.js';
+import { dragonImage, buildingImage } from './art/sprites.js';
 import { DRAGONS } from './data/dragons.js';
 import { dragonStage, habitatGoldCap } from './economy.js';
 import { cellUnlocked, canPlace, buildingAt } from './actions.js';
@@ -486,13 +486,11 @@ export class Island {
     if (b.type === 'farm') extra.farmState = b.growing ? (now() >= b.growing.doneAt ? 'ready' : 'growing') : 'empty';
     if (b.type === 'hatchery') extra.eggs = st.eggs.map((e) => DRAGONS[e.species]);
     if (b.type === 'breeding') extra.breedingActive = !!st.breeding;
-    const key = 'bld|' + buildingKey(b, extra);
-    return getImage(key, () => buildingSVG(b, extra));
+    return buildingImage(b, extra);
   }
 
   dragonImage(dragon, facing) {
-    const stage = dragonStage(dragon.level);
-    return getImage(`drg|${dragon.species}|${stage}|${facing}`, () => dragonSVG(dragon.species, stage, { size: 160, facing }));
+    return dragonImage(dragon.species, dragonStage(dragon.level), facing, dragon.stars || 0);
   }
 
   render(t) {
@@ -575,7 +573,7 @@ export class Island {
     // placement ghost
     if (this.placement) {
       const p = this.placement;
-      const ghost = p.building ? this.buildingImage(p.building) : getImage('bld|' + buildingKey({ def: p.def, level: 1 }, {}), () => buildingSVG({ def: p.def, level: 1 }, {}));
+      const ghost = p.building ? this.buildingImage(p.building) : buildingImage({ def: p.def, level: 1 }, {});
       const r = this.buildingRect({ x: p.gx, y: p.gy, size: p.size });
       ctx.globalAlpha = 0.75;
       if (imageReady(ghost)) ctx.drawImage(ghost, r.x, r.y, r.w, r.h);
@@ -625,7 +623,7 @@ export class Island {
       const facing = i % 2 === 0 ? 'left' : 'right';
       const img = this.dragonImage(d, facing);
       const stage = dragonStage(d.level);
-      const size = stage === 'baby' ? 44 : stage === 'young' ? 54 : 64;
+      const size = stage === 'baby' ? 52 : stage === 'young' ? 64 : 76;
       const [wx, wy] = this.gridToWorld(b.x + slot[0], b.y + slot[1]);
       const phase = (b.x * 7 + b.y * 13 + i * 31) % 10;
       const hop = Math.abs(Math.sin(t / 420 + phase)) * 4;

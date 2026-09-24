@@ -2,7 +2,8 @@ import { game } from '../game.js';
 import { BUILDINGS, FOOD_OPTIONS } from '../data/buildings.js';
 import { DRAGONS } from '../data/dragons.js';
 import { ELEMENTS, elementBadge } from '../data/elements.js';
-import { dragonSVG, eggSVG, mysteryEggSVG } from '../art/dragon.js';
+import { eggSVG, mysteryEggSVG } from '../art/dragon.js';
+import { dragonImgHtml } from '../art/sprites.js';
 import * as actions from '../actions.js';
 import * as eco from '../economy.js';
 import { openModal, bindActions, cost, toast, ICON, confirmDialog, bar, infoDialog } from './ui.js';
@@ -89,7 +90,7 @@ export const buildingPanel = {
     </div>
     <h3 class="group-title">Dragons <span class="muted">${dragons.length}/${capN}</span></h3>`;
     html += dragons.map((d) => `<button class="list-item tappable" data-action="dragon" data-id="${d.id}">
-      <div class="thumb">${dragonSVG(d.species, eco.dragonStage(d.level), { size: 64 })}</div>
+      <div class="thumb">${dragonImgHtml(d.species, eco.dragonStage(d.level), { size: 64, stars: d.stars || 0 })}</div>
       <div class="info"><div class="name">${escapeHtml(d.name)} <span class="muted">Lv ${d.level}</span></div><div class="meta">${DRAGONS[d.species].name} · ${fmt(eco.dragonGoldRate(d))}/min</div></div><span class="chev">›</span></button>`).join('');
     for (let i = dragons.length; i < capN; i++) html += `<button class="list-item tappable empty" data-action="shop" data-tab="dragons"><div class="info"><div class="name muted">Empty nest</div><div class="meta">Buy or breed a ${ELEMENTS[b.element].name} dragon</div></div></button>`;
     if (b.level < 3) html += `<p class="hint">Upgrading adds room for another dragon and raises the gold cap.</p>`;
@@ -259,7 +260,7 @@ export const buildingPanel = {
       openModal({
         title: r.isNew ? 'New species discovered!' : 'It hatched!',
         cls: 'center celebrate',
-        html: `<div class="dragon-hero">${dragonSVG(egg.species, 'baby', { size: 160 })}</div>
+        html: `<div class="dragon-hero">${dragonImgHtml(egg.species, 'baby', { size: 160, eager: true })}</div>
           <h3 class="center-text">${sp.name}</h3>
           <div class="badges center">${sp.elements.map((e) => elementBadge(e, 18)).join('')}</div>
           <p class="dialog-text">${sp.desc}</p>

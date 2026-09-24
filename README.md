@@ -3,7 +3,7 @@
 A cosy dragon city-builder and breeding game that runs entirely in the browser and is built for iPhone.
 Raise dragons in element habitats, feed them to level up, breed hybrids, hatch eggs, expand your island and take your team into turn-based battles.
 
-**No build step, no dependencies, no image files.** Every dragon, egg and building is drawn procedurally as SVG.
+**No build step, no image files.** Dragons and buildings are real-time 3D models built procedurally with [Three.js](https://threejs.org) (vendored in `vendor/`) and rendered with lighting and shadows: a spinnable model on every dragon's page, a 3D battle arena, and pre-rendered isometric sprites for the island map, shop and Dragon Book. Devices without WebGL fall back to the procedural SVG art.
 
 ## Play it online
 
@@ -96,7 +96,10 @@ src/battle.js              turn-based battle engine (pure logic)
 src/social.js              trainer cards and gift codes (no server needed)
 src/cloud.js, src/config.js optional Firebase leaderboard sync
 src/island.js              isometric canvas renderer + touch input (three isle themes)
-src/art/                   procedural SVG dragons, eggs and buildings
+src/art/three/             Three.js engine helpers, procedural 3D dragon and building models, live viewer, battle arena
+src/art/sprites.js         renders 3D models to cached sprites (with lazy hydration) and falls back to SVG
+src/art/                   procedural SVG dragons, eggs and buildings (fallback and egg art)
+vendor/three.module.min.js Three.js r170 (MIT, see vendor/THREE-LICENSE)
 src/data/                  elements, dragons, buildings, quests, campaign/tower, events, missions, achievements
 src/ui/                    HUD and all panels (shop, dragons, buildings, breeding, battle, friends, quests, settings)
 sw.js, manifest.webmanifest  PWA offline support and home-screen install

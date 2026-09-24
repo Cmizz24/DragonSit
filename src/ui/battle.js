@@ -2,7 +2,9 @@ import { game } from '../game.js';
 import { DRAGONS, RARITY } from '../data/dragons.js';
 import { ELEMENTS, elementBadge, elementMultiplier } from '../data/elements.js';
 import { CAMPAIGN_STAGES, STAGE_COUNT, heroicStage, leagueFor, LEAGUES, towerFloor } from '../data/campaign.js';
-import { dragonSVG } from '../art/dragon.js';
+import { dragonImgHtml, art } from '../art/sprites.js';
+import { Arena } from '../art/three/arena.js';
+import { ISLES } from '../data/buildings.js';
 import * as actions from '../actions.js';
 import * as eco from '../economy.js';
 import { createBattle, playRound, unitsFromDragons, unitsFromTeam, makeArenaOpponent, describeMultiplier } from '../battle.js';
@@ -105,7 +107,7 @@ export const battlePanel = {
         <div class="stage-num">${state === 'done' ? '✓' : s.id}</div>
         <div class="info">
           <div class="name">${s.name}</div>
-          <div class="team-preview">${s.team.map((t) => `<span class="mini ${state === 'locked' ? 'dim' : ''}">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 34 })}<i>${t.level}</i></span>`).join('')}</div>
+          <div class="team-preview">${s.team.map((t) => `<span class="mini ${state === 'locked' ? 'dim' : ''}">${dragonImgHtml(t.species, eco.dragonStage(t.level), { size: 34 })}<i>${t.level}</i></span>`).join('')}</div>
           <div class="meta">${rewardHtml(s.reward)}</div>
         </div>
         <button class="btn small ${state === 'next' ? 'primary' : ''}" data-action="stage" data-id="${s.id}" ${state === 'locked' ? 'disabled' : ''}>${state === 'done' ? 'Replay' : state === 'next' ? 'Fight' : ICON.lock}</button>
@@ -131,7 +133,7 @@ export const battlePanel = {
     </div>
     <div class="card">
       <div class="row between"><b>Opponent: ${opp.name}</b><button class="link" data-action="reroll">New opponent</button></div>
-      <div class="team-preview big">${opp.team.map((t) => `<span class="mini">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 56 })}<i>${t.level}</i><em>${DRAGONS[t.species].name.replace(' Dragon', '')}</em></span>`).join('')}</div>
+      <div class="team-preview big">${opp.team.map((t) => `<span class="mini">${dragonImgHtml(t.species, eco.dragonStage(t.level), { size: 56 })}<i>${t.level}</i><em>${DRAGONS[t.species].name.replace(' Dragon', '')}</em></span>`).join('')}</div>
       <div class="meta">Win for ~${fmt(150 + opp.level * 45)} gold, food and trophies. Losing costs 10 trophies.</div>
       ${cooling ? `<div class="row gap"><button class="btn ghost grow" disabled>Rest: <span data-arena-timer>${fmtTime(st.battle.nextArenaAt - now())}</span></button><button class="btn small" data-action="skip">${ICON.gem} ${actions.speedUpCost({ doneAt: st.battle.nextArenaAt })}</button></div>` : `<button class="btn primary wide" data-action="arena">Fight!</button>`}
     </div>
@@ -154,7 +156,7 @@ export const battlePanel = {
       const units = actions.towerUnits(st);
       html += `<div class="card">
         <div class="row between"><b>Run in progress</b><span class="muted">Next: floor ${run.floor}${floor.boss ? ' (boss)' : ''}</span></div>
-        <div class="team-row left">${units.map((u) => `<div class="team-btn ${u.hp <= 0 ? 'ko' : ''}">${dragonSVG(u.species, eco.dragonStage(u.level), { size: 40 })}<div class="bar hp mini"><div class="bar-fill ${u.hp / u.maxHp > 0.5 ? 'ok' : u.hp / u.maxHp > 0.2 ? 'warn' : 'low'}" style="width:${(u.hp / u.maxHp) * 100}%"></div></div></div>`).join('')}</div>
+        <div class="team-row left">${units.map((u) => `<div class="team-btn ${u.hp <= 0 ? 'ko' : ''}">${dragonImgHtml(u.species, eco.dragonStage(u.level), { size: 40 })}<div class="bar hp mini"><div class="bar-fill ${u.hp / u.maxHp > 0.5 ? 'ok' : u.hp / u.maxHp > 0.2 ? 'warn' : 'low'}" style="width:${(u.hp / u.maxHp) * 100}%"></div></div></div>`).join('')}</div>
         <div class="meta">Enemies: ${floor.team.map((t) => `${DRAGONS[t.species].name.replace(' Dragon', '')} L${t.level}`).join(', ')}</div>
         <div class="meta">Floor reward: ${rewardHtml(floor.reward)}</div>
         <div class="row gap"><button class="btn primary grow" data-action="towercontinue" ${units.some((u) => u.hp > 0) ? '' : 'disabled'}>Fight floor ${run.floor}</button><button class="btn ghost" data-action="towerretreat">Retreat</button></div>
@@ -249,14 +251,14 @@ export const battlePanel = {
     });
     const render = () => {
       const list = [...st.dragons].sort((a, b) => b.level - a.level);
-      m.body.innerHTML = `<div class="card"><div class="meta">${meta.mode === 'tower' ? 'Floor 1 enemies (they get stronger every floor)' : 'Enemy team'}</div><div class="team-preview big">${enemyTeam.map((t) => `<span class="mini">${dragonSVG(t.species, eco.dragonStage(t.level), { size: 48 })}<i>${t.level}</i><em>${escapeHtml(t.name || DRAGONS[t.species].name.replace(' Dragon', ''))}</em></span>`).join('')}</div></div>
+      m.body.innerHTML = `<div class="card"><div class="meta">${meta.mode === 'tower' ? 'Floor 1 enemies (they get stronger every floor)' : 'Enemy team'}</div><div class="team-preview big">${enemyTeam.map((t) => `<span class="mini">${dragonImgHtml(t.species, eco.dragonStage(t.level), { size: 48 })}<i>${t.level}</i><em>${escapeHtml(t.name || DRAGONS[t.species].name.replace(' Dragon', ''))}</em></span>`).join('')}</div></div>
         <p class="hint">Pick up to 3 dragons (${selected.length}/3). Element advantages deal 1.75x damage.</p>
         ${list.map((d) => {
           const sp = DRAGONS[d.species];
           const idx = selected.indexOf(d.id);
           const adv = enemyTeam.some((t) => sp.elements.some((e) => elementMultiplier(e, DRAGONS[t.species].elements) >= 1.5));
           return `<button class="list-item tappable ${idx >= 0 ? 'selected' : ''}" data-action="toggle" data-id="${d.id}">
-            <div class="thumb">${dragonSVG(d.species, eco.dragonStage(d.level), { size: 56 })}</div>
+            <div class="thumb">${dragonImgHtml(d.species, eco.dragonStage(d.level), { size: 56, stars: d.stars || 0 })}</div>
             <div class="info"><div class="name">${escapeHtml(d.name)} <span class="muted">Lv ${d.level}</span> ${starsHtml(d.stars)}</div><div class="badges">${sp.elements.map((e) => elementBadge(e, 14)).join('')} ${adv ? '<span class="tag good">Advantage</span>' : ''}</div></div>
             <span class="pick-mark">${idx >= 0 ? idx + 1 : ''}</span></button>`;
         }).join('')}
@@ -283,9 +285,9 @@ export const battlePanel = {
     this.battle = battle;
     this.busy = false;
     root.hidden = false;
-    root.innerHTML = `<div class="battle-screen">
+    root.innerHTML = `<div class="battle-screen ${art.mode === '3d' ? 'three' : ''}">
       <div class="battle-head"><span class="title">${escapeHtml(meta.title)}</span><span class="round" data-round>Round 1</span><button class="btn small ghost" data-action="flee">Flee</button></div>
-      <div class="battle-field">
+      <div class="battle-field">${art.mode === '3d' ? '<canvas class="arena-canvas"></canvas>' : ''}
         <div class="fighter enemy" data-side="enemy"><div class="hp-box"><div class="hp-name"></div><div class="bar hp"><div class="bar-fill"></div></div><div class="hp-num"></div></div><div class="sprite-wrap"><div class="shadow"></div><div class="sprite"></div></div></div>
         <div class="fighter player" data-side="player"><div class="hp-box"><div class="hp-name"></div><div class="bar hp"><div class="bar-fill"></div></div><div class="hp-num"></div></div><div class="sprite-wrap"><div class="shadow"></div><div class="sprite"></div></div></div>
       </div>
@@ -304,6 +306,15 @@ export const battlePanel = {
         if (ok) this.finish(false);
       },
     });
+    this.arena = null;
+    if (art.mode === '3d') {
+      try {
+        this.arena = new Arena(root.querySelector('.arena-canvas'), ISLES[game.state.currentIsle || 0].theme);
+      } catch (err) {
+        console.warn('arena failed, using 2D', err);
+        this.arena = null;
+      }
+    }
     this.renderFighter('player');
     this.renderFighter('enemy');
     this.renderControls();
@@ -319,8 +330,14 @@ export const battlePanel = {
     const u = this.unit(side);
     el.querySelector('.hp-name').innerHTML = `${escapeHtml(u.name)} <span class="lv">Lv ${u.level}</span> ${u.stars ? `<span class="stars">${'★'.repeat(u.stars)}</span>` : ''} ${u.elements.map((e) => elementBadge(e, 12)).join('')}`;
     const sprite = el.querySelector('.sprite');
-    sprite.innerHTML = dragonSVG(u.species, eco.dragonStage(u.level), { size: 200, facing: side === 'player' ? 'right' : 'left' });
-    sprite.className = 'sprite' + (animate ? ' enter' : '') + (u.hp <= 0 ? ' faint' : '');
+    if (this.arena) {
+      sprite.innerHTML = '';
+      sprite.className = 'sprite';
+      this.arena.setUnit(side, u, animate);
+    } else {
+      sprite.innerHTML = dragonImgHtml(u.species, eco.dragonStage(u.level), { size: 200, facing: side === 'player' ? 'right' : 'left', eager: true });
+      sprite.className = 'sprite' + (animate ? ' enter' : '') + (u.hp <= 0 ? ' faint' : '');
+    }
     this.updateHp(side);
   },
 
@@ -350,7 +367,7 @@ export const battlePanel = {
         <span class="mv-meta">${m.power} pw · ${Math.round(m.acc * 100)}% ${eff === 'super' ? '· ▲' : eff === 'weak' ? '· ▼' : ''}</span></button>`;
     }).join('');
     root.querySelector('[data-team]').innerHTML = b.player.map((u, i) => `<button class="team-btn ${i === b.active.player ? 'active' : ''} ${u.hp <= 0 ? 'ko' : ''}" data-action="switch" data-i="${i}" ${this.busy || b.over || i === b.active.player || u.hp <= 0 ? 'disabled' : ''}>
-      ${dragonSVG(u.species, eco.dragonStage(u.level), { size: 40 })}<div class="bar hp mini"><div class="bar-fill ${u.hp / u.maxHp > 0.5 ? 'ok' : u.hp / u.maxHp > 0.2 ? 'warn' : 'low'}" style="width:${(u.hp / u.maxHp) * 100}%"></div></div></button>`).join('');
+      ${dragonImgHtml(u.species, eco.dragonStage(u.level), { size: 40, eager: true })}<div class="bar hp mini"><div class="bar-fill ${u.hp / u.maxHp > 0.5 ? 'ok' : u.hp / u.maxHp > 0.2 ? 'warn' : 'low'}" style="width:${(u.hp / u.maxHp) * 100}%"></div></div></button>`).join('');
   },
 
   log(text) {
@@ -359,12 +376,21 @@ export const battlePanel = {
   },
 
   popDamage(side, text, cls = '') {
-    const el = document.querySelector(`#battle-root .fighter[data-side="${side}"] .sprite-wrap`);
-    if (!el) return;
     const d = document.createElement('div');
     d.className = `dmg ${cls}`;
     d.textContent = text;
-    el.appendChild(d);
+    if (this.arena) {
+      const field = document.querySelector('#battle-root .battle-field');
+      const p = this.arena.screenPos(side);
+      if (!field || !p) return;
+      d.style.left = `${p.x}px`;
+      d.style.top = `${p.y}px`;
+      field.appendChild(d);
+    } else {
+      const el = document.querySelector(`#battle-root .fighter[data-side="${side}"] .sprite-wrap`);
+      if (!el) return;
+      el.appendChild(d);
+    }
     setTimeout(() => d.remove(), 900);
   },
 
@@ -398,7 +424,8 @@ export const battlePanel = {
         const attacker = this.battle[ev.side].find((x) => x.id === ev.attacker);
         const spriteA = root.querySelector(`.fighter[data-side="${ev.side}"] .sprite`);
         const spriteT = root.querySelector(`.fighter[data-side="${other}"] .sprite`);
-        spriteA.classList.add(ev.side === 'player' ? 'lunge-right' : 'lunge-left');
+        if (this.arena) this.arena.lunge(ev.side);
+        else spriteA.classList.add(ev.side === 'player' ? 'lunge-right' : 'lunge-left');
         await sleep(260);
         if (ev.miss) {
           sfx.play('miss');
@@ -406,7 +433,8 @@ export const battlePanel = {
           this.popDamage(other, 'Miss', 'miss');
         } else {
           sfx.play(ev.crit ? 'crit' : 'hit');
-          spriteT.classList.add('shake');
+          if (this.arena) this.arena.hit(other, ev.crit || ev.mult >= 1.5);
+          else spriteT.classList.add('shake');
           this.popDamage(other, `-${ev.dmg}`, ev.crit ? 'crit' : ev.mult >= 1.5 ? 'super' : ev.mult < 1 ? 'weak' : '');
           const note = [describeMultiplier(ev.mult), ev.crit ? 'Critical hit!' : ''].filter(Boolean).join(' ');
           this.log(`${escapeHtml(attacker.name)} used <b>${ev.move.name}</b>! ${note}`);
@@ -419,7 +447,8 @@ export const battlePanel = {
       } else if (ev.type === 'faint') {
         const u = this.battle[ev.side].find((x) => x.id === ev.unit);
         const sprite = root.querySelector(`.fighter[data-side="${ev.side}"] .sprite`);
-        sprite.classList.add('faint');
+        if (this.arena) this.arena.faint(ev.side);
+        else sprite.classList.add('faint');
         this.log(`${escapeHtml(u.name)} fainted!`);
         if (ev.side === 'player') this.renderControls();
         await sleep(700);
@@ -431,6 +460,7 @@ export const battlePanel = {
 
   closeScreen() {
     const root = document.getElementById('battle-root');
+    if (this.arena) { try { this.arena.dispose(); } catch (err) { /* ignore */ } this.arena = null; }
     root.hidden = true;
     root.innerHTML = '';
     this.battle = null;
@@ -442,6 +472,7 @@ export const battlePanel = {
     const meta = battle ? battle.meta : { mode: 'arena', level: 1 };
     const heroSpecies = battle ? battle.player[0].species : 'flame';
     const heroLevel = battle ? battle.player[0].level : 1;
+    const heroImg = () => dragonImgHtml(heroSpecies, eco.dragonStage(heroLevel), { size: 130, eager: true });
     sfx.play(won ? 'win' : 'lose');
 
     if (meta.mode === 'tower') {
@@ -453,7 +484,7 @@ export const battlePanel = {
         title: won ? `Floor ${r.floor} cleared!` : `Run over at floor ${r.floor}`,
         cls: `center ${won ? 'celebrate' : ''}`,
         hideClose: true,
-        html: `<div class="result-art">${won ? dragonSVG(heroSpecies, eco.dragonStage(heroLevel), { size: 130 }) : '<div class="big-icon">💤</div>'}</div>
+        html: `<div class="result-art">${won ? heroImg() : '<div class="big-icon">💤</div>'}</div>
           <p class="dialog-text">${won ? `Your team heals a little. Floor ${r.nextFloor} awaits${towerFloor(r.nextFloor).boss ? ' with a boss' : ''}.` : `You reached floor ${r.floor}. Best: ${st.tower.best}.`}</p>
           <p class="reward-line">${rewardHtml(r.reward)}</p>
           <div class="row gap center">
@@ -479,7 +510,7 @@ export const battlePanel = {
       title: won ? 'Victory!' : 'Defeat',
       cls: `center ${won ? 'celebrate' : ''}`,
       hideClose: true,
-      html: `<div class="result-art">${won ? dragonSVG(heroSpecies, eco.dragonStage(heroLevel), { size: 130 }) : '<div class="big-icon">💤</div>'}</div>
+      html: `<div class="result-art">${won ? heroImg() : '<div class="big-icon">💤</div>'}</div>
         <p class="dialog-text">${won ? (meta.mode === 'campaign' ? 'Stage cleared!' : meta.mode === 'friend' ? `You beat ${escapeHtml(meta.title.replace('vs ', ''))}'s team! Brag about it.` : `You defeated ${escapeHtml(meta.title.replace('Arena vs ', ''))}!`) : 'Your dragons need more training. Feed them to level up, and pick elements your enemies are weak to.'}</p>
         <p class="reward-line">${rewardHtml(reward)}</p>
         <div class="row gap center">

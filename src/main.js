@@ -16,6 +16,7 @@ import { DRAGON_LIST } from './data/dragons.js';
 import { sfx } from './audio.js';
 import { fmt, fmtTime } from './util.js';
 import { claimableQuests } from './actions.js';
+import { initArt } from './art/sprites.js';
 
 // ---------- build placement bar ----------
 const placementBar = {
@@ -105,7 +106,9 @@ function showWelcome() {
   });
 }
 
-function init() {
+async function init() {
+  // Load the 3D renderer first (falls back to SVG art if WebGL is unavailable or it takes too long).
+  await Promise.race([initArt().catch(() => null), new Promise((r) => setTimeout(r, 4000))]);
   const canvas = document.getElementById('island');
   game.panels = { shop: shopPanel, dragons: dragonsPanel, building: buildingPanel, breed: breedPanel, battle: battlePanel, quests: questsPanel, settings: settingsPanel, friends: friendsPanel, placement: placementBar };
   game.init(canvas);

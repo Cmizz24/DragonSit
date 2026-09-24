@@ -326,3 +326,28 @@ textarea.input { resize: none; }
 .team-row.left { justify-content: flex-start; margin: 8px 0; }
 .team-row.left .team-btn { pointer-events: none; }
 @media (max-width: 360px) { #bottom-nav button span { font-size: 9px; } .res { padding: 5px 8px 5px 6px; font-size: 13px; } }
+
+/* ---------- 3D art ---------- */
+.dimg, .bimg { display: block; object-fit: contain; }
+.list-item .thumb .dimg, .list-item .thumb .bimg, .book-cell .thumb .dimg, .outcome .thumb .dimg, .team-preview .mini .dimg, .team-btn .dimg, .parent .dimg, .dragon-hero .dimg, .result-art .dimg { width: 100%; height: 100%; }
+.list-item .thumb .bimg { width: 100%; height: auto; max-height: 100%; }
+.team-preview .mini .dimg { width: 34px; height: 34px; }
+.team-preview.big .mini .dimg { width: 56px; height: 56px; }
+.team-btn .dimg { width: 40px; height: 40px; }
+.parent .dimg { width: 90px; height: 90px; }
+.dragon-hero .dimg { width: 170px; height: 170px; }
+.result-art .dimg { width: 130px; height: 130px; }
+.book-cell .thumb .dimg { width: 64px; height: 64px; }
+.dimg.pending, .bimg.pending { background: radial-gradient(circle at 50% 60%, rgba(255,255,255,.08), transparent 70%); }
+.book-cell.unknown .thumb .dimg, .outcome.unknown .thumb .dimg, .dragon-hero.unknown .dimg { filter: brightness(0.12) saturate(0); opacity: .8; }
+.dragon-hero.live { position: relative; width: 100%; height: 240px; border-radius: 18px; background: radial-gradient(ellipse at 50% 70%, rgba(255,255,255,.08), rgba(0,0,0,0) 70%); overflow: hidden; }
+.viewer-canvas { width: 100%; height: 100%; display: block; touch-action: pan-y; }
+.battle-screen.three .battle-field { background: radial-gradient(ellipse at 50% 20%, #34507a, #101c30 75%); }
+.battle-screen.three .battle-field::before { display: none; }
+.arena-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.battle-screen.three .fighter { pointer-events: none; background: none; border: 0; box-shadow: none; }
+.battle-screen.three .fighter.player { top: 3%; left: 3%; bottom: auto; }
+.battle-screen.three .fighter.enemy { top: 3%; right: 3%; }
+.battle-screen.three .sprite-wrap { display: none; }
+.battle-screen.three .battle-field .dmg { position: absolute; transform: translate(-50%, -50%); }
+.battle-screen.three .hp-box { max-width: 190px; }
