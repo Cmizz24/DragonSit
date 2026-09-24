@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{background:#3b6a3a;font-family:sans-serif;color:#fff;margin:0;padding:8px}.grid{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end}.c{text-align:center;font-size:11px}</style></head><body>
+<div id="grid" class="grid"></div>
+<script type="module">
+import { buildingSVG } from '../src/art/buildings.js';
+import { BUILDING_LIST } from '../src/data/buildings.js';
+import { DRAGONS } from '../src/data/dragons.js';
+const g = document.getElementById('grid');
+for (const d of BUILDING_LIST) {
+  const b = { def: d.id, level: 1 };
+  let extra = {};
+  if (d.type === 'farm') extra = { farmState: 'ready' };
+  if (d.type === 'hatchery') extra = { eggs: [DRAGONS.flame, DRAGONS.sea, DRAGONS.sprout] };
+  if (d.type === 'breeding') extra = { breedingActive: true };
+  g.innerHTML += `<div class="c">${buildingSVG(b, extra)}<div>${d.name}</div></div>`;
+}
+g.innerHTML += `<div class="c">${buildingSVG({def:'habitat_fire',level:3})}<div>fire L3</div></div>`;
+g.innerHTML += `<div class="c">${buildingSVG({def:'farm',level:4},{farmState:'growing'})}<div>farm L4 growing</div></div>`;
+window.__done = true;
+</script></body></html>

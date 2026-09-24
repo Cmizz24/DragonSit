@@ -1,0 +1,16 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{background:#2b3a4a;font-family:sans-serif;color:#fff;margin:0;padding:8px}.grid{display:flex;flex-wrap:wrap;gap:4px}.c{width:150px;text-align:center;font-size:11px}.c svg{width:140px;height:140px}.row{display:flex;gap:6px;margin-bottom:8px}</style></head><body>
+<div id="stages" class="row"></div>
+<div id="grid" class="grid"></div>
+<div id="eggs" class="row"></div>
+<script type="module">
+import { dragonSVG, eggSVG } from '../src/art/dragon.js';
+import { DRAGON_LIST } from '../src/data/dragons.js';
+const st = document.getElementById('stages');
+for (const id of ['flame','sea']) for (const s of ['baby','young','adult']) st.innerHTML += `<div class="c">${dragonSVG(id, s, {size:140})}<div>${id} ${s}</div></div>`;
+st.innerHTML += `<div class="c">${dragonSVG('flame','adult',{size:140,facing:'right'})}<div>flame right</div></div>`;
+const g = document.getElementById('grid');
+for (const d of DRAGON_LIST) g.innerHTML += `<div class="c">${dragonSVG(d.id,'adult',{size:140})}<div>${d.name} (${d.elements.join('+')})</div></div>`;
+const e = document.getElementById('eggs');
+for (const id of ['flame','sea','volcano','phoenix','legend']) e.innerHTML += `<div class="c">${eggSVG(id,{size:80})}</div>`;
+window.__done = true;
+</script></body></html>
